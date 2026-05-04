@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session
 
-DATABASE_URL = "sqlite:///./eldok.db"
+DATABASE_URL = "sqlite:///./tavla.db"
 
 engine = create_engine(
     DATABASE_URL,

@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="ElDok API",
+    title="Tavla API",
     description="Electrical installation documentation for Norwegian homes",
     version="0.1.0",
     lifespan=lifespan,
