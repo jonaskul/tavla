@@ -18,7 +18,7 @@ const TYPE_ABBR = {
   other:            'A',
 }
 
-// Each slot is 32px wide with 1px gap → module pixel width = width * 33 - 1
+// Each slot is 32px wide with 1px gap → pixel width = width * 33 - 1
 const slotPx = (width) => width * 33 - 1
 
 export default function Module({ module, onClick, onContextMenu }) {
@@ -27,8 +27,8 @@ export default function Module({ module, onClick, onContextMenu }) {
 
   return (
     <div
-      data-testid="module"
-      className={`h-16 rounded flex flex-col items-center justify-center cursor-pointer select-none px-1 shrink-0 ${color}`}
+      data-testid={`module-${module.id}`}
+      className={`module-${module.type} h-16 rounded flex flex-col items-center justify-center cursor-pointer select-none px-1 shrink-0 ${color}`}
       style={{ width: slotPx(module.width) }}
       onClick={onClick}
       onContextMenu={onContextMenu}

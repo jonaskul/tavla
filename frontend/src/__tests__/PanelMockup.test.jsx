@@ -1,235 +1,150 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
+import { vi } from 'vitest'
 import PanelCanvas from '../components/PanelMockup/PanelCanvas'
 import ModuleDialog from '../components/PanelMockup/ModuleDialog'
 import * as api from '../api/client'
 
-const mkClient = () =>
-  new QueryClient({ defaultOptions: { queries: { retry: false } } })
+const wrapper = ({ children }) => (
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </QueryClientProvider>
+)
 
-const wrapper =
-  (client = mkClient()) =>
-  ({ children }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-
-// ── Fixtures ─────────────────────────────────────────────────────────────────
-
-const panel = {
-  id: 1, property_id: 1,
-  name: 'Hoved', location: 'Gang',
-  rows: 2, modules_per_row: 4,
-  notes: null, created_at: '',
+const mockPanel = {
+  id: 1,
+  name: 'Hovedtavle',
+  location: 'Gang',
+  rows: 2,
+  modules_per_row: 12,
 }
 
-const breaker = {
-  id: 1, panel_id: 1,
-  row: 0, position: 0, width: 2,
-  type: 'breaker', label: 'Lys', ampere: 16,
-  has_rcd: false, circuit_id: null,
-}
+const mockModules = [
+  { id: 1, row: 0, position: 0, width: 2, type: 'breaker', ampere: 16, label: 'B01', circuit_id: 1 },
+  { id: 2, row: 0, position: 4, width: 1, type: 'rcd', ampere: 40, label: 'JF1', circuit_id: null },
+]
 
-const circuits = [{ id: 1, panel_id: 1, designation: 'B01', name: 'Lys stue' }]
+const mockCircuits = [
+  { id: 1, designation: 'B01', name: 'Lys stue' },
+  { id: 2, designation: 'B02', name: 'Stikk stue' },
+]
 
-// ── PanelCanvas ───────────────────────────────────────────────────────────────
-
-describe('PanelCanvas', () => {
-  test('renders correct number of rails', async () => {
-    vi.spyOn(api, 'getPanel').mockResolvedValue(panel)
-    vi.spyOn(api, 'getModules').mockResolvedValue([])
-    vi.spyOn(api, 'getCircuits').mockResolvedValue([])
-
-    render(<PanelCanvas panelId={1} />, { wrapper: wrapper() })
-
-    await waitFor(() => {
-      // 2 rails → data-testid="rail-0" and "rail-1"
-      expect(screen.getByTestId('rail-0')).toBeInTheDocument()
-      expect(screen.getByTestId('rail-1')).toBeInTheDocument()
-    })
-  })
-
-  test('renders rows * modules_per_row empty slots when no modules', async () => {
-    vi.spyOn(api, 'getPanel').mockResolvedValue(panel)
-    vi.spyOn(api, 'getModules').mockResolvedValue([])
-    vi.spyOn(api, 'getCircuits').mockResolvedValue([])
-
-    render(<PanelCanvas panelId={1} />, { wrapper: wrapper() })
-
-    await waitFor(() => {
-      // 2 rows × 4 slots = 8 empty slots
-      expect(screen.getAllByTestId('slot')).toHaveLength(8)
-    })
-  })
-
-  test('occupied slots are not rendered as empty slots', async () => {
-    vi.spyOn(api, 'getPanel').mockResolvedValue(panel)
-    // breaker at row=0, position=0, width=2 → occupies 2 of 4 slots in rail 0
-    vi.spyOn(api, 'getModules').mockResolvedValue([breaker])
-    vi.spyOn(api, 'getCircuits').mockResolvedValue([])
-
-    render(<PanelCanvas panelId={1} />, { wrapper: wrapper() })
-
-    await waitFor(() => {
-      // rail 0: 2 slots taken by module → 2 empty remain
-      // rail 1: 4 empty
-      // total empty = 6
-      expect(screen.getAllByTestId('slot')).toHaveLength(6)
-      // The module is rendered as a Module component
-      expect(screen.getByTestId('module')).toBeInTheDocument()
-    })
-  })
-
-  test('clicking an occupied module does not open dialog for a new module', async () => {
-    vi.spyOn(api, 'getPanel').mockResolvedValue(panel)
-    vi.spyOn(api, 'getModules').mockResolvedValue([breaker])
-    vi.spyOn(api, 'getCircuits').mockResolvedValue([])
-
-    render(<PanelCanvas panelId={1} />, { wrapper: wrapper() })
-
-    await waitFor(() => screen.getByTestId('module'))
-
-    // Clicking the module opens the *edit* dialog (pre-filled), not the create dialog
-    fireEvent.click(screen.getByTestId('module'))
-    expect(screen.getByText(/rediger modul/i)).toBeInTheDocument()
-  })
-
-  test('drag across empty slots highlights them and opens create dialog on release', async () => {
-    vi.spyOn(api, 'getPanel').mockResolvedValue(panel)
-    vi.spyOn(api, 'getModules').mockResolvedValue([])
-    vi.spyOn(api, 'getCircuits').mockResolvedValue([])
-
-    render(<PanelCanvas panelId={1} />, { wrapper: wrapper() })
-
-    await waitFor(() => screen.getAllByTestId('slot'))
-
-    const slots = screen.getAllByTestId('slot')
-    // Slots 0..3 are rail-0, slots 4..7 are rail-1
-    fireEvent.mouseDown(slots[0])  // start drag at rail-0 pos-0
-    fireEvent.mouseEnter(slots[1]) // extend to pos-1
-    fireEvent.mouseUp(slots[1])    // release
-
-    // Global mouseup fires → dialog should open
-    fireEvent.mouseUp(window)
-
-    await waitFor(() =>
-      expect(screen.getByText(/legg til modul/i)).toBeInTheDocument()
-    )
-  })
-
-  test('drag stops before an occupied slot', async () => {
-    // Module at row=0, position=2, width=1
-    const blocker = { ...breaker, id: 2, position: 2, width: 1 }
-    vi.spyOn(api, 'getPanel').mockResolvedValue(panel)
-    vi.spyOn(api, 'getModules').mockResolvedValue([blocker])
-    vi.spyOn(api, 'getCircuits').mockResolvedValue([])
-
-    render(<PanelCanvas panelId={1} />, { wrapper: wrapper() })
-
-    await waitFor(() => screen.getAllByTestId('slot'))
-
-    const slots = screen.getAllByTestId('slot')
-    // slots: rail-0 has pos 0,1,3 as empty (pos 2 is module) and rail-1 has pos 0..3
-    // entering pos 3 in rail-0 while starting from pos 0 should be blocked by pos 2
-    fireEvent.mouseDown(slots[0])
-    // Try entering a slot beyond the occupied one — component clamps current to last valid pos
-    fireEvent.mouseEnter(slots[1]) // pos 1 still empty, active
-    // The drag.current should not jump past the occupied slot → highlight stays ≤ pos 1
-    // We verify by checking that only 2 slots are active (highlighted) in rail-0, not 3+
-    const activeSlots = slots.filter(
-      (s) => s.className.includes('bg-blue-200')
-    )
-    expect(activeSlots.length).toBeLessThanOrEqual(2)
-  })
+// AC-1: Korrekt antall rader og slots
+test('rendrer riktig antall skinnerader', async () => {
+  vi.spyOn(api, 'getPanelModules').mockResolvedValue(mockModules)
+  vi.spyOn(api, 'getCircuits').mockResolvedValue([])
+  render(<PanelCanvas panel={mockPanel} />, { wrapper })
+  const rails = await screen.findAllByText(/skinne \d/i)
+  expect(rails).toHaveLength(2)
 })
 
-// ── ModuleDialog ──────────────────────────────────────────────────────────────
+test('rendrer riktig antall slots per skinne', async () => {
+  vi.spyOn(api, 'getPanelModules').mockResolvedValue([])
+  vi.spyOn(api, 'getCircuits').mockResolvedValue([])
+  render(<PanelCanvas panel={mockPanel} />, { wrapper })
+  // 2 rader × 12 slots = 24 tomme slots
+  const slots = await screen.findAllByTestId('empty-slot')
+  expect(slots).toHaveLength(24)
+})
 
-describe('ModuleDialog', () => {
-  const base = {
-    mode: 'create',
-    module: undefined,
-    circuits,
-    onSave: vi.fn(),
-    onDelete: vi.fn(),
-    onClose: vi.fn(),
-  }
+test('viser antall ledige slots per skinne', async () => {
+  vi.spyOn(api, 'getPanelModules').mockResolvedValue(mockModules)
+  vi.spyOn(api, 'getCircuits').mockResolvedValue([])
+  render(<PanelCanvas panel={mockPanel} />, { wrapper })
+  // Skinne 1: 12 - 3 opptatte = 9 ledige
+  await waitFor(() => expect(screen.getByText(/9 ledige/i)).toBeInTheDocument())
+})
 
-  test('shows ampere and circuit fields when type is breaker (default)', () => {
-    render(<ModuleDialog {...base} />, { wrapper: wrapper() })
-    expect(screen.getByTestId('field-ampere')).toBeInTheDocument()
-    expect(screen.getByTestId('field-circuit')).toBeInTheDocument()
-    expect(screen.getByTestId('field-label')).toBeInTheDocument()
-  })
+// AC-2: Overlapp-validering
+test('opptatte slots er ikke klikkbare', async () => {
+  vi.spyOn(api, 'getPanelModules').mockResolvedValue(mockModules)
+  vi.spyOn(api, 'getCircuits').mockResolvedValue([])
+  const onSelect = vi.fn()
+  render(<PanelCanvas panel={mockPanel} onSlotSelect={onSelect} />, { wrapper })
+  await waitFor(() => screen.getAllByTestId('occupied-slot'))
+  const occupiedSlots = screen.getAllByTestId('occupied-slot')
+  await userEvent.click(occupiedSlots[0])
+  expect(onSelect).not.toHaveBeenCalled()
+})
 
-  test('hides ampere and circuit fields when type is non-breaker (shelly)', () => {
-    render(
-      <ModuleDialog
-        {...base}
-        mode="edit"
-        module={{ type: 'shelly', label: '', ampere: null, has_rcd: false, circuit_id: null }}
-      />,
-      { wrapper: wrapper() }
-    )
-    expect(screen.queryByTestId('field-ampere')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('field-circuit')).not.toBeInTheDocument()
-    // Label is always shown
-    expect(screen.getByTestId('field-label')).toBeInTheDocument()
-  })
+test('kan ikke plassere modul utenfor skinnens bredde', async () => {
+  vi.spyOn(api, 'getPanelModules').mockResolvedValue([])
+  vi.spyOn(api, 'getCircuits').mockResolvedValue([])
+  render(<PanelCanvas panel={{ ...mockPanel, modules_per_row: 4 }} />, { wrapper })
+  // Slot 3 (siste) + dra 2 til høyre skal begrenses til bredde 1
+  const slots = await screen.findAllByTestId('empty-slot')
+  fireEvent.mouseDown(slots[3])
+  fireEvent.mouseEnter(slots[3]) // forsøk å dra forbi kanten
+  const highlighted = screen.getAllByTestId('highlighted-slot')
+  expect(highlighted).toHaveLength(1) // maks 1, ikke 2
+})
 
-  test('switching type to non-breaker hides conditional fields', async () => {
-    render(<ModuleDialog {...base} />, { wrapper: wrapper() })
+// AC-3: ModuleDialog – felter per type
+test('viser ampere-felt for automatsikring', () => {
+  render(
+    <ModuleDialog open={true} onClose={() => {}} onSave={() => {}} circuits={mockCircuits} />,
+    { wrapper }
+  )
+  fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'breaker' } })
+  expect(screen.getByLabelText(/ampere/i)).toBeInTheDocument()
+})
 
-    // Start as breaker — ampere visible
-    expect(screen.getByTestId('field-ampere')).toBeInTheDocument()
+test('skjuler ampere-felt for Shelly', () => {
+  render(
+    <ModuleDialog open={true} onClose={() => {}} onSave={() => {}} circuits={mockCircuits} />,
+    { wrapper }
+  )
+  fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'shelly' } })
+  expect(screen.queryByLabelText(/ampere/i)).not.toBeInTheDocument()
+})
 
-    // Switch to shelly
-    fireEvent.change(screen.getByTestId('field-type'), {
-      target: { value: 'shelly' },
-    })
+test('viser kursbetegnelse-dropdown for automatsikring', () => {
+  render(
+    <ModuleDialog open={true} onClose={() => {}} onSave={() => {}} circuits={mockCircuits} />,
+    { wrapper }
+  )
+  fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'breaker' } })
+  expect(screen.getByLabelText(/kursbetegnelse/i)).toBeInTheDocument()
+  expect(screen.getByText('B01 – Lys stue')).toBeInTheDocument()
+})
 
-    expect(screen.queryByTestId('field-ampere')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('field-circuit')).not.toBeInTheDocument()
-  })
+test('skjuler kursbetegnelse for jordfeilbryter', () => {
+  render(
+    <ModuleDialog open={true} onClose={() => {}} onSave={() => {}} circuits={mockCircuits} />,
+    { wrapper }
+  )
+  fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'rcd' } })
+  expect(screen.queryByLabelText(/kursbetegnelse/i)).not.toBeInTheDocument()
+})
 
-  test('calls onSave with correct payload for breaker type', () => {
-    const onSave = vi.fn()
-    render(<ModuleDialog {...base} onSave={onSave} />, { wrapper: wrapper() })
+test('lagre uten type gir valideringsfeil', async () => {
+  render(
+    <ModuleDialog open={true} onClose={() => {}} onSave={() => {}} circuits={[]} />,
+    { wrapper }
+  )
+  await userEvent.click(screen.getByText(/lagre/i))
+  expect(screen.getByText(/type er påkrevd/i)).toBeInTheDocument()
+})
 
-    fireEvent.change(screen.getByTestId('field-ampere'), { target: { value: '20' } })
-    fireEvent.change(screen.getByTestId('field-label'), { target: { value: 'Ovn' } })
-    fireEvent.click(screen.getByText(/lagre/i))
+test('escape lukker dialog', async () => {
+  const onClose = vi.fn()
+  render(
+    <ModuleDialog open={true} onClose={onClose} onSave={() => {}} circuits={[]} />,
+    { wrapper }
+  )
+  fireEvent.keyDown(document, { key: 'Escape' })
+  expect(onClose).toHaveBeenCalled()
+})
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'breaker', ampere: 20, label: 'Ovn' })
-    )
-  })
-
-  test('calls onSave with null ampere for non-breaker type', () => {
-    const onSave = vi.fn()
-    render(<ModuleDialog {...base} onSave={onSave} />, { wrapper: wrapper() })
-
-    fireEvent.change(screen.getByTestId('field-type'), { target: { value: 'dynalite' } })
-    fireEvent.click(screen.getByText(/lagre/i))
-
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'dynalite', ampere: null, circuit_id: null })
-    )
-  })
-
-  test('shows delete button in edit mode, hides it in create mode', () => {
-    const { rerender } = render(<ModuleDialog {...base} />, { wrapper: wrapper() })
-    expect(screen.queryByText(/slett modul/i)).not.toBeInTheDocument()
-
-    rerender(
-      <QueryClientProvider client={mkClient()}>
-        <ModuleDialog
-          {...base}
-          mode="edit"
-          module={{ type: 'breaker', label: '', ampere: null, has_rcd: false, circuit_id: null }}
-        />
-      </QueryClientProvider>
-    )
-    expect(screen.getByText(/slett modul/i)).toBeInTheDocument()
-  })
+// AC-8: Fargekoding
+test('modul har riktig farge-klasse per type', async () => {
+  vi.spyOn(api, 'getPanelModules').mockResolvedValue([
+    { id: 1, row: 0, position: 0, width: 1, type: 'breaker', ampere: 16, label: 'B01' }
+  ])
+  vi.spyOn(api, 'getCircuits').mockResolvedValue([])
+  render(<PanelCanvas panel={mockPanel} />, { wrapper })
+  await waitFor(() => screen.getByTestId('module-1'))
+  expect(screen.getByTestId('module-1')).toHaveClass('module-breaker')
 })

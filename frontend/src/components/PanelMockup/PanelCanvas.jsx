@@ -1,76 +1,58 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPanel, getModules, getCircuits, createModule, updateModule, deleteModule } from '../../api/client'
+import { getPanelModules, getCircuits, createModule, updateModule, deleteModule } from '../../api/client'
 import DinRail from './DinRail'
 import ModuleDialog from './ModuleDialog'
 import { t } from '../../i18n/no'
 
-// Build a lookup: `${row}-${pos}` → module object for every cell a module occupies
 function buildOccupied(modules) {
   const map = {}
   for (const m of modules) {
-    for (let i = 0; i < m.width; i++) {
-      map[`${m.row}-${m.position + i}`] = m
-    }
+    for (let i = 0; i < m.width; i++) map[`${m.row}-${m.position + i}`] = m
   }
   return map
 }
 
-// Find the furthest position reachable from `start` in `row` without hitting an occupied cell
-function maxReach(start, row, modulesPerRow, occupied) {
-  let end = start
-  while (end + 1 < modulesPerRow && !occupied[`${row}-${end + 1}`]) {
-    end++
-  }
-  return end
-}
-
-export default function PanelCanvas({ panelId }) {
+export default function PanelCanvas({ panel, onSlotSelect }) {
   const qc = useQueryClient()
 
-  const [drag, setDrag]     = useState(null)   // {row, start, current} | null
-  const [dialog, setDialog] = useState(null)   // {mode, row, position, width, module?} | null
+  const [drag, setDrag]     = useState(null)
+  const [dialog, setDialog] = useState(null)
 
-  const { data: panel } = useQuery({
-    queryKey: ['panel', panelId],
-    queryFn:  () => getPanel(panelId),
-  })
   const { data: modules = [] } = useQuery({
-    queryKey: ['modules', panelId],
-    queryFn:  () => getModules(panelId),
-    enabled:  !!panel,
+    queryKey: ['modules', panel.id],
+    queryFn:  () => getPanelModules(panel.id),
   })
   const { data: circuits = [] } = useQuery({
-    queryKey: ['circuits', panelId],
-    queryFn:  () => getCircuits(panelId),
-    enabled:  !!panel,
+    queryKey: ['circuits', panel.id],
+    queryFn:  () => getCircuits(panel.id),
   })
 
   const invalidate = useCallback(
-    () => qc.invalidateQueries({ queryKey: ['modules', panelId] }),
-    [qc, panelId],
+    () => qc.invalidateQueries({ queryKey: ['modules', panel.id] }),
+    [qc, panel.id],
   )
 
-  const createMut = useMutation({ mutationFn: (d) => createModule(panelId, d), onSuccess: invalidate })
+  const createMut = useMutation({ mutationFn: (d) => createModule(panel.id, d), onSuccess: invalidate })
   const updateMut = useMutation({ mutationFn: ({ id, data }) => updateModule(id, data), onSuccess: invalidate })
   const deleteMut = useMutation({ mutationFn: (id) => deleteModule(id), onSuccess: invalidate })
 
-  // Release drag on global mouseup (handles release outside the component)
+  // Global mouseup: commit drag → open create dialog
   useEffect(() => {
     const up = () => {
       setDrag((d) => {
         if (d) {
           const width = d.current - d.start + 1
-          setDialog({ mode: 'create', row: d.row, position: d.start, width })
+          const sel = { mode: 'create', row: d.row, position: d.start, width }
+          setDialog(sel)
+          onSlotSelect?.(sel)
         }
         return null
       })
     }
     window.addEventListener('mouseup', up)
     return () => window.removeEventListener('mouseup', up)
-  }, [])
-
-  if (!panel) return null
+  }, [onSlotSelect])
 
   const occupied = buildOccupied(modules)
 
@@ -82,7 +64,6 @@ export default function PanelCanvas({ panelId }) {
   const handleSlotMouseEnter = (row, position) => {
     if (!drag || drag.row !== row) return
     if (occupied[`${row}-${position}`]) return
-    // Clamp to last unoccupied position between start and here
     let end = drag.start
     for (let p = drag.start; p <= position; p++) {
       if (occupied[`${row}-${p}`]) break
@@ -91,7 +72,6 @@ export default function PanelCanvas({ panelId }) {
     setDrag((d) => ({ ...d, current: end }))
   }
 
-  // mouseUp on slot: let the window listener handle opening the dialog
   const handleSlotMouseUp = () => {}
 
   const handleModuleClick = (module) => {
@@ -100,17 +80,12 @@ export default function PanelCanvas({ panelId }) {
 
   const handleModuleContextMenu = (e, module) => {
     e.preventDefault()
-    if (window.confirm(t.common.confirmDelete)) {
-      deleteMut.mutate(module.id)
-    }
+    if (window.confirm(t.common.confirmDelete)) deleteMut.mutate(module.id)
   }
 
   const handleSave = (formData) => {
     if (dialog.mode === 'create') {
-      createMut.mutate({
-        row: dialog.row, position: dialog.position, width: dialog.width,
-        ...formData,
-      })
+      createMut.mutate({ row: dialog.row, position: dialog.position, width: dialog.width, ...formData })
     } else {
       updateMut.mutate({ id: dialog.module.id, data: formData })
     }
@@ -126,33 +101,33 @@ export default function PanelCanvas({ panelId }) {
     <div className="select-none" onMouseLeave={() => setDrag(null)}>
       <h2 className="text-lg font-semibold text-gray-800 mb-3">{t.panel.mockup}</h2>
 
-      <div className="space-y-2">
-        {Array.from({ length: panel.rows }, (_, row) => (
-          <DinRail
-            key={row}
-            railIndex={row}
-            modulesPerRow={panel.modules_per_row}
-            modules={modules.filter((m) => m.row === row)}
-            drag={drag}
-            onSlotMouseDown={handleSlotMouseDown}
-            onSlotMouseEnter={handleSlotMouseEnter}
-            onSlotMouseUp={handleSlotMouseUp}
-            onModuleClick={handleModuleClick}
-            onModuleContextMenu={handleModuleContextMenu}
-          />
-        ))}
+      <div className="overflow-x-auto">
+        <div className="space-y-2 min-w-max">
+          {Array.from({ length: panel.rows }, (_, row) => (
+            <DinRail
+              key={row}
+              railIndex={row}
+              modulesPerRow={panel.modules_per_row}
+              modules={modules.filter((m) => m.row === row)}
+              drag={drag}
+              onSlotMouseDown={handleSlotMouseDown}
+              onSlotMouseEnter={handleSlotMouseEnter}
+              onSlotMouseUp={handleSlotMouseUp}
+              onModuleClick={handleModuleClick}
+              onModuleContextMenu={handleModuleContextMenu}
+            />
+          ))}
+        </div>
       </div>
 
-      {dialog && (
-        <ModuleDialog
-          mode={dialog.mode}
-          module={dialog.module}
-          circuits={circuits}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onClose={() => setDialog(null)}
-        />
-      )}
+      <ModuleDialog
+        open={!!dialog}
+        module={dialog?.module}
+        circuits={circuits}
+        onSave={handleSave}
+        onDelete={dialog?.mode === 'edit' ? handleDelete : undefined}
+        onClose={() => setDialog(null)}
+      />
     </div>
   )
 }

@@ -53,7 +53,7 @@ export default function PanelDetail() {
       </div>
 
       <div className="mb-6">
-        <PanelCanvas panelId={panelId} />
+        <PanelCanvas panel={panel} />
       </div>
 
       <h2 className="text-lg font-semibold text-gray-800 mb-3">{t.nav.circuit}</h2>

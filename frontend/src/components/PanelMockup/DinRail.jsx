@@ -12,7 +12,7 @@ export default function DinRail({
   onModuleClick,
   onModuleContextMenu,
 }) {
-  // Build a slot array left-to-right, merging occupied runs into module entries
+  // Build slot array left-to-right, merging occupied runs into module entries
   const slots = []
   let pos = 0
   while (pos < modulesPerRow) {
@@ -46,19 +46,17 @@ export default function DinRail({
       </div>
 
       {/* Slots */}
-      <div
-        className="flex gap-px"
-        data-testid={`rail-${railIndex}`}
-      >
+      <div className="flex gap-px" data-testid={`rail-${railIndex}`}>
         {slots.map((slot) => {
           if (slot.kind === 'module') {
             return (
-              <Module
-                key={slot.module.id}
-                module={slot.module}
-                onClick={() => onModuleClick(slot.module)}
-                onContextMenu={(e) => onModuleContextMenu(e, slot.module)}
-              />
+              <div key={slot.module.id} data-testid="occupied-slot">
+                <Module
+                  module={slot.module}
+                  onClick={() => onModuleClick(slot.module)}
+                  onContextMenu={(e) => onModuleContextMenu(e, slot.module)}
+                />
+              </div>
             )
           }
 
@@ -68,7 +66,7 @@ export default function DinRail({
           return (
             <div
               key={`empty-${position}`}
-              data-testid="slot"
+              data-testid={active ? 'highlighted-slot' : 'empty-slot'}
               className={[
                 'w-8 h-16 rounded border cursor-pointer transition-colors select-none',
                 active

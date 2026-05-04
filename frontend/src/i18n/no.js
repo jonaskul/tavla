@@ -33,7 +33,7 @@ export const t = {
     configure: "Konfigurer skap",
     mockup: "Skemontasje",
     rail: "Skinne",
-    emptySlots: "ledig",
+    emptySlots: "ledige",
     addModule: "Legg til modul",
     editModule: "Rediger modul",
     deleteModule: "Slett modul",
@@ -46,6 +46,7 @@ export const t = {
     circuit: "Kursbetegnelse",
     width: "Bredde (moduler)",
     noCircuit: "Ingen kurs (kobles fritt)",
+    typeRequired: "Type er påkrevd",
   },
 
   // Module types
