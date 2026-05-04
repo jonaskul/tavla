@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import Optional
 from datetime import datetime
 
@@ -18,13 +18,14 @@ class ModuleTypeDefinitionRead(BaseModel):
     can_have_ampere: bool
     is_builtin: bool
     created_at: datetime
+    usage_count: int = 0
 
 
 class ModuleTypeDefinitionCreate(BaseModel):
     key: str
     name_no: str
     color: str
-    abbreviation: str
+    abbreviation: str = Field(max_length=3)
     can_have_circuit: bool = False
     can_have_ampere: bool = False
 
@@ -32,7 +33,7 @@ class ModuleTypeDefinitionCreate(BaseModel):
 class ModuleTypeDefinitionUpdate(BaseModel):
     name_no: Optional[str] = None
     color: Optional[str] = None
-    abbreviation: Optional[str] = None
+    abbreviation: Optional[str] = Field(default=None, max_length=3)
     can_have_circuit: Optional[bool] = None
     can_have_ampere: Optional[bool] = None
 

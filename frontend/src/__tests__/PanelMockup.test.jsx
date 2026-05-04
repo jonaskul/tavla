@@ -2,14 +2,27 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { vi } from 'vitest'
+import { vi, beforeEach } from 'vitest'
 import PanelCanvas from '../components/PanelMockup/PanelCanvas'
 import ModuleDialog from '../components/PanelMockup/ModuleDialog'
+import { ModuleTypesProvider } from '../contexts/ModuleTypesContext'
 import * as api from '../api/client'
+
+const mockTypeDefs = [
+  { id: 1, key: 'breaker', name_no: 'Automatsikring', color: '#2563eb', abbreviation: 'LS', can_have_circuit: true, can_have_ampere: true, is_builtin: true, usage_count: 0 },
+  { id: 2, key: 'rcd', name_no: 'Jordfeilbryter', color: '#ca8a04', abbreviation: 'JF', can_have_circuit: false, can_have_ampere: true, is_builtin: true, usage_count: 0 },
+  { id: 3, key: 'shelly', name_no: 'Shelly', color: '#374151', abbreviation: 'SH', can_have_circuit: false, can_have_ampere: false, is_builtin: true, usage_count: 0 },
+]
+
+beforeEach(() => {
+  vi.spyOn(api, 'getModuleTypes').mockResolvedValue(mockTypeDefs)
+})
 
 const wrapper = ({ children }) => (
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-    <MemoryRouter>{children}</MemoryRouter>
+    <ModuleTypesProvider>
+      <MemoryRouter>{children}</MemoryRouter>
+    </ModuleTypesProvider>
   </QueryClientProvider>
 )
 
@@ -82,11 +95,12 @@ test('kan ikke plassere modul utenfor skinnens bredde', async () => {
 })
 
 // AC-3: ModuleDialog – felter per type
-test('viser ampere-felt for automatsikring', () => {
+test('viser ampere-felt for automatsikring', async () => {
   render(
     <ModuleDialog open={true} onClose={() => {}} onSave={() => {}} circuits={mockCircuits} />,
     { wrapper }
   )
+  await waitFor(() => screen.getByText('Automatsikring'))
   fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'breaker' } })
   expect(screen.getByLabelText(/ampere/i)).toBeInTheDocument()
 })
@@ -100,11 +114,12 @@ test('skjuler ampere-felt for Shelly', () => {
   expect(screen.queryByLabelText(/ampere/i)).not.toBeInTheDocument()
 })
 
-test('viser kursbetegnelse-dropdown for automatsikring', () => {
+test('viser kursbetegnelse-dropdown for automatsikring', async () => {
   render(
     <ModuleDialog open={true} onClose={() => {}} onSave={() => {}} circuits={mockCircuits} />,
     { wrapper }
   )
+  await waitFor(() => screen.getByText('Automatsikring'))
   fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'breaker' } })
   expect(screen.getByLabelText(/kursbetegnelse/i)).toBeInTheDocument()
   expect(screen.getByText('B01 – Lys stue')).toBeInTheDocument()

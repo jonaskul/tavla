@@ -48,10 +48,12 @@ def panel_factory(client, property_factory):
 
 @pytest.fixture
 def circuit_factory(client, panel_factory):
-    def make():
-        panel = panel_factory()
+    def make(panel_id=None):
+        if panel_id is None:
+            panel = panel_factory()
+            panel_id = panel["id"]
         return client.post(
-            f"/api/panels/{panel['id']}/circuits",
+            f"/api/panels/{panel_id}/circuits",
             json={"designation": "B01", "name": "Lys stue", "room": "Stue"},
         ).json()
     return make

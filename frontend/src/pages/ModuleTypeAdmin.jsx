@@ -5,7 +5,6 @@ import {
   createModuleType,
   updateModuleType,
   deleteModuleType,
-  getModuleTypeUsage,
 } from '../api/client'
 import { t } from '../i18n/no'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -32,6 +31,9 @@ function Toggle({ checked, onChange, label, id }) {
   return (
     <label htmlFor={id} className="flex items-center gap-3 cursor-pointer select-none">
       <div
+        id={id}
+        role="switch"
+        aria-checked={checked}
         className={`relative w-10 h-5 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-300'}`}
         onClick={() => onChange(!checked)}
       >
@@ -49,22 +51,27 @@ function ColorPicker({ value, onChange }) {
     <div>
       <p className="text-sm font-medium text-gray-700 mb-2">{s.color}</p>
       <div className="grid grid-cols-10 gap-1.5">
-        {COLOR_PALETTE.map((hex) => (
-          <button
-            key={hex}
-            type="button"
-            title={hex}
-            onClick={() => onChange(hex)}
-            className="w-7 h-7 rounded flex items-center justify-center"
-            style={{ backgroundColor: hex }}
-          >
-            {value === hex && (
-              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8l3.5 3.5L13 5" stroke={hexTextColor(hex)} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </button>
-        ))}
+        {COLOR_PALETTE.map((hex) => {
+          const selected = value === hex
+          return (
+            <button
+              key={hex}
+              type="button"
+              title={hex}
+              data-testid="color-swatch"
+              aria-selected={selected ? 'true' : 'false'}
+              onClick={() => onChange(hex)}
+              className="w-7 h-7 rounded flex items-center justify-center"
+              style={{ backgroundColor: hex }}
+            >
+              {selected && (
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8l3.5 3.5L13 5" stroke={hexTextColor(hex)} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+          )
+        })}
       </div>
       {value && !COLOR_PALETTE.includes(value) && (
         <p className="text-xs text-gray-500 mt-1">Gjeldende: {value}</p>
@@ -99,12 +106,13 @@ function TypeDialog({ open, initial, onSave, onClose }) {
     if (!form.name_no.trim()) errs.name_no = s.nameRequired
     if (!form.color) errs.color = s.colorRequired
     if (!form.abbreviation.trim()) errs.abbreviation = s.abbreviationRequired
+    else if (form.abbreviation.trim().length > 3) errs.abbreviation = s.abbreviationTooLong
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     const payload = {
       name_no: form.name_no.trim(),
       color: form.color,
-      abbreviation: form.abbreviation.trim().slice(0, 3),
+      abbreviation: form.abbreviation.trim(),
       can_have_circuit: form.can_have_circuit,
       can_have_ampere: form.can_have_ampere,
     }
@@ -122,8 +130,9 @@ function TypeDialog({ open, initial, onSave, onClose }) {
         <div className="space-y-4">
           {!isEdit && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{s.key}</label>
+              <label htmlFor="type-key" className="block text-sm font-medium text-gray-700 mb-1">{s.key}</label>
               <input
+                id="type-key"
                 type="text"
                 value={form.key}
                 onChange={set('key')}
@@ -138,8 +147,9 @@ function TypeDialog({ open, initial, onSave, onClose }) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{s.name}</label>
+            <label htmlFor="type-name" className="block text-sm font-medium text-gray-700 mb-1">{s.name}</label>
             <input
+              id="type-name"
               type="text"
               value={form.name_no}
               onChange={set('name_no')}
@@ -149,10 +159,10 @@ function TypeDialog({ open, initial, onSave, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{s.abbreviation}</label>
+            <label htmlFor="type-abbr" className="block text-sm font-medium text-gray-700 mb-1">{s.abbreviation}</label>
             <input
+              id="type-abbr"
               type="text"
-              maxLength={3}
               value={form.abbreviation}
               onChange={set('abbreviation')}
               placeholder="LS"
@@ -167,7 +177,6 @@ function TypeDialog({ open, initial, onSave, onClose }) {
           <ColorPicker value={form.color} onChange={set('color')} />
           {errors.color && <p className="text-red-500 text-xs">{errors.color}</p>}
 
-          {/* Preview */}
           {form.color && form.abbreviation && (
             <div className="flex items-center gap-3">
               <div
@@ -215,21 +224,7 @@ function TypeDialog({ open, initial, onSave, onClose }) {
   )
 }
 
-function UsageCount({ typeKey }) {
-  const { data } = useQuery({
-    queryKey: ['module_type_usage', typeKey],
-    queryFn: () => getModuleTypeUsage(typeKey),
-    staleTime: 30_000,
-  })
-  const count = data?.count ?? 0
-  return (
-    <span className={`text-xs ${count > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
-      {count} {s.modules}
-    </span>
-  )
-}
-
-export default function ModuleTypeSettings() {
+export default function ModuleTypeAdmin() {
   const qc = useQueryClient()
   const [dialog, setDialog] = useState({ open: false, item: null })
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, item: null, error: null })
@@ -239,15 +234,13 @@ export default function ModuleTypeSettings() {
     queryFn: getModuleTypes,
   })
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['module_types'] })
-  }
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['module_types'] })
 
   const createMutation = useMutation({
     mutationFn: createModuleType,
     onSuccess: () => { invalidate(); setDialog({ open: false, item: null }) },
     onError: (err) => {
-      if (err.response?.status === 409) {
+      if (err.response?.status === 400) {
         setDialog((d) => ({ ...d, error: s.keyExists }))
       }
     },
@@ -309,15 +302,13 @@ export default function ModuleTypeSettings() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {types.map((mt) => (
-              <tr key={mt.id} className="hover:bg-gray-50">
+              <tr key={mt.id} data-testid="module-type-row">
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-8 h-10 rounded flex items-center justify-center text-[10px] font-bold shrink-0"
-                      style={{ backgroundColor: mt.color, color: hexTextColor(mt.color) }}
-                    >
-                      {mt.abbreviation}
-                    </div>
+                  <div
+                    className="w-8 h-10 rounded flex items-center justify-center text-[10px] font-bold shrink-0"
+                    style={{ backgroundColor: mt.color, color: hexTextColor(mt.color) }}
+                  >
+                    {mt.abbreviation}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -338,7 +329,9 @@ export default function ModuleTypeSettings() {
                     : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="px-4 py-3">
-                  <UsageCount typeKey={mt.key} />
+                  <span className={`text-xs ${mt.usage_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                    {mt.usage_count} {s.modules}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex gap-2 justify-end">
@@ -349,9 +342,10 @@ export default function ModuleTypeSettings() {
                       {t.common.edit}
                     </button>
                     <button
+                      data-testid="delete-btn"
                       onClick={() => setDeleteConfirm({ open: true, item: mt, error: null })}
-                      disabled={mt.is_builtin}
-                      title={mt.is_builtin ? s.builtinDeleteBlocked : undefined}
+                      disabled={mt.usage_count > 0}
+                      title={mt.usage_count > 0 ? `${mt.usage_count} ${s.modules}` : undefined}
                       className="px-2.5 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {t.common.delete}
