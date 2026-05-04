@@ -90,8 +90,10 @@ export default function CircuitDialog({ open, initial, onSave, onClose }) {
               onChange={set('designation')}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            {errors.designation && (
+            {errors.designation ? (
               <p className="text-red-500 text-xs mt-1">{errors.designation}</p>
+            ) : (
+              <p className="text-gray-400 text-xs mt-1">Teknisk kode, f.eks. B01, L03, K12</p>
             )}
           </div>
 
@@ -105,8 +107,10 @@ export default function CircuitDialog({ open, initial, onSave, onClose }) {
               onChange={set('name')}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            {errors.name && (
+            {errors.name ? (
               <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+            ) : (
+              <p className="text-gray-400 text-xs mt-1">Beskrivelse av hva kursen betjener, f.eks. Lys stue/gang</p>
             )}
           </div>
 
