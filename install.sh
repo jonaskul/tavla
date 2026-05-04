@@ -204,17 +204,15 @@ python3 -m venv /opt/tavla/venv
 /opt/tavla/venv/bin/pip install --quiet -r /opt/tavla/requirements.txt
 
 echo "==> Creating directories and config files..."
-mkdir -p /opt/tavla/uploads
+mkdir -p /opt/tavla/uploads /opt/tavla/backend
 chown www-data:www-data /opt/tavla/uploads 2>/dev/null || true
 
-cat > /opt/tavla/backend/.env <<ENVEOF 2>/dev/null || \
-cat > /opt/tavla/.env <<ENVEOF2
+cat > /opt/tavla/backend/.env <<ENVEOF
 # Cloudflare R2 (fill in for file storage)
 R2_ENDPOINT_URL=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=
-ENVEOF2
 ENVEOF
 
 echo "==> Building frontend..."
@@ -264,13 +262,13 @@ server {
 
     location /api/ {
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host \\$host;
+        proxy_set_header X-Real-IP \\$remote_addr;
+        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
     }
 
     location / {
-        try_files \$uri \$uri/ /index.html;
+        try_files \\$uri \\$uri/ /index.html;
     }
 }
 NGXEOF
@@ -285,7 +283,7 @@ mkdir -p /etc/systemd/system/console-getty.service.d
 cat > /etc/systemd/system/console-getty.service.d/autologin.conf <<AUTOEOF
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
+ExecStart=-/sbin/agetty --autologin root --noclear %I \\$TERM
 AUTOEOF
 systemctl daemon-reload
 
