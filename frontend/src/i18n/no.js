@@ -81,10 +81,16 @@ export const t = {
   connectionPoint: {
     title: "Koblingspunkt",
     add: "Legg til koblingspunkt",
+    edit: "Rediger koblingspunkt",
     type: "Type",
     location: "Plassering",
     notes: "Kommentar",
     files: "Filer og bilder",
+    typeRequired: "Type er påkrevd",
+    locationRequired: "Plassering er påkrevd",
+    noConnectionPoints: "Ingen koblingspunkter registrert",
+    cannotDeleteHasFiles: "Kan ikke slette koblingspunkt som har filer. Slett filene først.",
+    deleteError: "Kunne ikke slette koblingspunkt.",
     types: {
       junction_box: "Koblingsboks",
       outlet: "Stikkontakt",
@@ -118,6 +124,10 @@ export const t = {
     upload: "Last opp fil",
     uploadHint: "Slipp filer her eller klikk for å velge",
     acceptedTypes: "JPG, PNG, PDF opptil 20 MB",
+    invalidType: "Kun JPG, PNG og PDF er tillatt",
+    tooLarge: "Filen er for stor. Maks 20 MB",
+    uploadError: "Filopplasting feilet",
+    deleteConfirm: "Er du sikker på at du vil slette filen?",
   },
 
   // Changelog
@@ -128,6 +138,8 @@ export const t = {
     description: "Beskrivelse",
     changedAt: "Tidspunkt",
     noEntries: "Ingen endringer registrert",
+    changedByRequired: "Utført av er påkrevd",
+    descriptionRequired: "Beskrivelse er påkrevd",
   },
 
   // Common

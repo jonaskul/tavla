@@ -69,3 +69,16 @@ def module_factory(client, panel_factory):
             "ampere": 16,
         }).json()
     return make
+
+
+@pytest.fixture
+def cp_factory(client, circuit_factory):
+    def make(circuit_id=None, type="outlet", location="Stue nord"):
+        if circuit_id is None:
+            circuit = circuit_factory()
+            circuit_id = circuit["id"]
+        return client.post(
+            f"/api/circuits/{circuit_id}/connection_points",
+            json={"type": type, "location": location},
+        ).json()
+    return make

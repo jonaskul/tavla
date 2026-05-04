@@ -193,6 +193,13 @@ class ConnectionPointUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class ConnectionPointCreateNested(BaseModel):
+    """Body schema for POST /api/circuits/{id}/connection_points (circuit_id from URL)."""
+    type: ConnectionPointType
+    location: str
+    notes: Optional[str] = None
+
+
 # --- Equipment ---
 
 class EquipmentRead(BaseModel):

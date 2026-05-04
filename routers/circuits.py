@@ -3,10 +3,26 @@ from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
-from models import Circuit, ConnectionPoint, Panel
-from schemas import CircuitCreate, CircuitRead, CircuitUpdate
+from models import ChangeLog, Circuit, ConnectionPoint, File, Panel
+from schemas import (
+    ChangeLogRead,
+    CircuitCreate,
+    CircuitRead,
+    CircuitUpdate,
+    ConnectionPointCreateNested,
+    ConnectionPointRead,
+)
 
 router = APIRouter()
+
+CP_TYPE_LABELS = {
+    "junction_box": "Koblingsboks",
+    "outlet": "Stikkontakt",
+    "light": "Lampe/armatur",
+    "switch": "Bryter",
+    "motor": "Motor",
+    "other": "Annet",
+}
 
 
 @router.get("", response_model=List[CircuitRead])
@@ -81,3 +97,56 @@ def delete_circuit(circuit_id: int, session: Session = Depends(get_session)):
     session.delete(circuit)
     session.commit()
     return circuit_data
+
+
+# --- Nested: connection points under circuit ---
+
+@router.get("/{circuit_id}/connection_points", response_model=List[ConnectionPointRead])
+def list_connection_points_for_circuit(
+    circuit_id: int, session: Session = Depends(get_session)
+):
+    if not session.get(Circuit, circuit_id):
+        raise HTTPException(status_code=404, detail="Circuit not found")
+    return session.exec(
+        select(ConnectionPoint).where(ConnectionPoint.circuit_id == circuit_id)
+    ).all()
+
+
+@router.post("/{circuit_id}/connection_points", response_model=ConnectionPointRead)
+def create_connection_point_for_circuit(
+    circuit_id: int,
+    data: ConnectionPointCreateNested,
+    session: Session = Depends(get_session),
+):
+    circuit = session.get(Circuit, circuit_id)
+    if not circuit:
+        raise HTTPException(status_code=404, detail="Circuit not found")
+    cp = ConnectionPoint(circuit_id=circuit_id, **data.model_dump())
+    session.add(cp)
+    session.commit()
+    session.refresh(cp)
+
+    type_label = CP_TYPE_LABELS.get(cp.type.value if hasattr(cp.type, "value") else cp.type, cp.type)
+    entry = ChangeLog(
+        circuit_id=circuit_id,
+        connection_point_id=cp.id,
+        changed_by="system",
+        description=f"Koblingspunkt opprettet: {type_label} – {cp.location}",
+    )
+    session.add(entry)
+    session.commit()
+
+    return cp
+
+
+# --- Nested: changelog under circuit ---
+
+@router.get("/{circuit_id}/changelog", response_model=List[ChangeLogRead])
+def list_changelog_for_circuit(
+    circuit_id: int, session: Session = Depends(get_session)
+):
+    if not session.get(Circuit, circuit_id):
+        raise HTTPException(status_code=404, detail="Circuit not found")
+    return session.exec(
+        select(ChangeLog).where(ChangeLog.circuit_id == circuit_id)
+    ).all()
