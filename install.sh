@@ -28,18 +28,23 @@ GITHUB_API="https://api.github.com/repos/jonaskul/tavla/branches?per_page=100"
 info "Fetching available branches from GitHub..."
 
 mapfile -t BRANCHES < <(
-    curl -sf --max-time 10 "$GITHUB_API" 2>/dev/null \
-        | grep -o '"name": *"[^"]*"' \
-        | sed 's/"name": *"//;s/"//' \
-        | sort \
-    || true
+    {
+        # Try git ls-remote first (no rate limit)
+        git ls-remote --heads "$REPO_URL" 2>/dev/null \
+            | awk '{print $2}' | sed 's|refs/heads/||' | sort
+    } || {
+        # Fall back to GitHub API
+        curl -sf --max-time 15 -H "User-Agent: tavla-installer" "$GITHUB_API" 2>/dev/null \
+            | grep -o '"name": *"[^"]*"' \
+            | sed 's/"name": *"//;s/"//' | sort
+    } || true
 )
 
 SELECTED_BRANCH=""
 if [[ ${#BRANCHES[@]} -eq 0 ]]; then
     warn "Could not fetch branches from GitHub."
-    read -rp "Enter branch name manually: " SELECTED_BRANCH
-    [[ -n "$SELECTED_BRANCH" ]] || die "Branch name cannot be empty."
+    read -rp "Enter branch name [main]: " SELECTED_BRANCH
+    SELECTED_BRANCH="${SELECTED_BRANCH:-main}"
 else
     echo ""
     echo "Available branches:"
