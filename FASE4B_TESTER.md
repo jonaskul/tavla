@@ -1,348 +1,74 @@
-# Tavla – Fase 4b: Kanaldokumentasjon
+# FASE 4B — Kanalregister (Channel Documentation) — Test Specification
 
-## Bakgrunn
-Utstyr med flere utganger (Dynalite relékontrollere, Shelly multi-channel,
-styringspaneler o.l.) trenger et kanalregister der hver utgang kan dokumenteres
-med tilkoblet last og eventuell kurskoblings.
+## Acceptance Criteria
 
----
-
-## Akseptansekriterier
-
-### AC-1: Kanalregister vises på utstyr
-- [ ] Utstyr med kanaler viser en kanalregistertabell under utstyrsinformasjonen
-- [ ] Kolonner: Nr, Etikett, Last, Tilknyttet kurs, Kommentar, Rediger
-- [ ] Tomme kanaler vises som grå rader med teksten "— ikke koblet —"
-- [ ] Utstyr uten kanaler viser ingen kanaltabell
-
-### AC-2: Auto-generering av kanaler ved opprettelse
-- [ ] Ved opprettelse av utstyr av type `dynalite`: vises felt "Antall kanaler" pre-fylt med 12
-- [ ] Ved opprettelse av utstyr av type `shelly`: vises felt "Antall kanaler" pre-fylt med 4
-- [ ] Andre utstyrstyper: vises felt "Antall kanaler" (tomt, valgfritt)
-- [ ] Ved lagre med antall kanaler > 0: genereres tomme kanaler nummerert 1–N automatisk
-- [ ] Kanalene er umiddelbart synlige i kanalregisteret etter opprettelse
-
-### AC-3: Rediger kanal
-- [ ] Klikk på rad aktiverer inline redigering av alle felt
-- [ ] Enter eller klikk utenfor lagrer endringen
-- [ ] Escape avbryter redigering uten å lagre
-- [ ] Endring sendes som PUT til `/api/channels/{id}`
-- [ ] Oppdatert verdi vises umiddelbart
-
-### AC-4: Tilknyttet kurs
-- [ ] Dropdown viser alle kurser i samme skap som utstyrets kurs
-- [ ] Tomt valg er mulig (kanal ikke koblet til kurs)
-- [ ] Valgt kurs vises som klikkbar lenke til `/kurs/:id`
-
-### AC-5: Legg til kanal manuelt
-- [ ] "Legg til kanal"-knapp legger til ny tom rad nederst
-- [ ] Ny kanal får neste ledige nummer automatisk
-- [ ] Ny rad er umiddelbart i redigeringsmodus
-
-### AC-6: Slett kanal
-- [ ] Slett-knapp per rad med bekreftelsesdialog
-- [ ] Kanal slettes og tabell oppdateres umiddelbart
-
-### AC-7: Norske tekster
-- [ ] Alle tekster hentes fra `i18n/no.js`
-- [ ] "— ikke koblet —" for tomme kanaler
-- [ ] Feltlabels: Nr, Etikett, Last, Tilknyttet kurs, Kommentar
+| # | Criteria |
+|---|---|
+| AC1 | `Channel` persists all fields: `equipment_id`, `number`, `label`, `load`, `circuit_id` (optional cross-ref), `notes` |
+| AC2 | `channel_count` on equipment create auto-generates N empty channels numbered 1–N; the field is **not** stored on the equipment record |
+| AC3 | `GET /api/equipment/{id}/channels` always returns channels ordered by `number` ascending |
+| AC4 | `POST /api/equipment/{id}/channels` with a duplicate `number` for the same equipment → **400** |
+| AC5 | `PUT /api/channels/{id}` with a non-existent `circuit_id` → **404** |
+| AC6 | Channel table rows have `data-testid="channel-row"` |
+| AC7 | Empty channels (all fields null/empty) display `— ikke koblet —` in both the label **and** load columns |
+| AC8 | When `circuit_id` is set, the circuit column renders as `<a href="/kurs/{circuit_id}">` showing the circuit designation |
+| AC9 | Creating `dynalite` equipment pre-fills Antall kanaler = **12**; `shelly` pre-fills **4**; all other types leave it empty |
+| AC10 | Inline editing: Enter saves, Escape cancels without persisting changes |
+| AC11 | `DELETE /api/channels/{id}` removes the channel; equipment record is unaffected |
 
 ---
 
-## Backend-tester (pytest)
+## Backend Tests (`tests/test_channels.py`)
 
-```python
-# backend/tests/test_channels.py
-
-def test_create_channel(client, equipment_factory):
-    eq = equipment_factory()
-    res = client.post(f"/api/equipment/{eq['id']}/channels", json={
-        "number": 1,
-        "label": "Lys stue gruppe A",
-        "load": "6x LED downlight",
-        "notes": ""
-    })
-    assert res.status_code == 200
-    data = res.json()
-    assert data["number"] == 1
-    assert data["label"] == "Lys stue gruppe A"
-    assert data["equipment_id"] == eq["id"]
-
-def test_auto_generate_channels_on_equipment_create(client, circuit_factory):
-    circuit = circuit_factory()
-    res = client.post(f"/api/circuits/{circuit['id']}/equipment", json={
-        "type": "dynalite",
-        "brand": "Signify",
-        "model": "DDRC1220FR-GL",
-        "channel_count": 12
-    })
-    assert res.status_code == 200
-    eq_id = res.json()["id"]
-
-    channels = client.get(f"/api/equipment/{eq_id}/channels").json()
-    assert len(channels) == 12
-    assert channels[0]["number"] == 1
-    assert channels[11]["number"] == 12
-    assert all(c["label"] is None or c["label"] == "" for c in channels)
-
-def test_auto_generate_zero_channels(client, circuit_factory):
-    circuit = circuit_factory()
-    res = client.post(f"/api/circuits/{circuit['id']}/equipment", json={
-        "type": "floor_heating",
-        "channel_count": 0
-    })
-    assert res.status_code == 200
-    eq_id = res.json()["id"]
-    channels = client.get(f"/api/equipment/{eq_id}/channels").json()
-    assert len(channels) == 0
-
-def test_channel_count_not_stored_on_equipment(client, circuit_factory):
-    circuit = circuit_factory()
-    res = client.post(f"/api/circuits/{circuit['id']}/equipment", json={
-        "type": "dynalite",
-        "channel_count": 12
-    })
-    eq = res.json()
-    assert "channel_count" not in eq
-
-def test_get_channels_for_equipment(client, equipment_factory):
-    eq = equipment_factory()
-    for i in range(1, 4):
-        client.post(f"/api/equipment/{eq['id']}/channels", json={"number": i})
-    res = client.get(f"/api/equipment/{eq['id']}/channels")
-    assert res.status_code == 200
-    assert len(res.json()) == 3
-
-def test_get_channels_sorted_by_number(client, equipment_factory):
-    eq = equipment_factory()
-    for n in [3, 1, 2]:
-        client.post(f"/api/equipment/{eq['id']}/channels", json={"number": n})
-    channels = client.get(f"/api/equipment/{eq['id']}/channels").json()
-    numbers = [c["number"] for c in channels]
-    assert numbers == sorted(numbers)
-
-def test_update_channel(client, channel_factory):
-    ch = channel_factory()
-    res = client.put(f"/api/channels/{ch['id']}", json={
-        **ch,
-        "label": "Lys gang",
-        "load": "3x LED 9W"
-    })
-    assert res.status_code == 200
-    assert res.json()["label"] == "Lys gang"
-    assert res.json()["load"] == "3x LED 9W"
-
-def test_update_channel_with_circuit(client, channel_factory, circuit_factory):
-    ch = channel_factory()
-    circuit = circuit_factory()
-    res = client.put(f"/api/channels/{ch['id']}", json={
-        **ch, "circuit_id": circuit["id"]
-    })
-    assert res.status_code == 200
-    assert res.json()["circuit_id"] == circuit["id"]
-
-def test_update_channel_invalid_circuit(client, channel_factory):
-    ch = channel_factory()
-    res = client.put(f"/api/channels/{ch['id']}", json={
-        **ch, "circuit_id": 99999
-    })
-    assert res.status_code == 404
-
-def test_delete_channel(client, channel_factory):
-    ch = channel_factory()
-    res = client.delete(f"/api/channels/{ch['id']}")
-    assert res.status_code == 200
-
-def test_duplicate_channel_number_blocked(client, equipment_factory):
-    eq = equipment_factory()
-    client.post(f"/api/equipment/{eq['id']}/channels", json={"number": 1})
-    res = client.post(f"/api/equipment/{eq['id']}/channels", json={"number": 1})
-    assert res.status_code == 400
-
-def test_channel_not_found(client):
-    res = client.get("/api/channels/99999")
-    assert res.status_code == 404
-
-def test_equipment_not_found_for_channels(client):
-    res = client.get("/api/equipment/99999/channels")
-    assert res.status_code == 404
-```
-
-```python
-# Legg til i backend/tests/conftest.py
-
-@pytest.fixture
-def channel_factory(client, equipment_factory):
-    def make(equipment_id=None, number=1, label=None, load=None):
-        if equipment_id is None:
-            eq = equipment_factory()
-            equipment_id = eq["id"]
-        return client.post(f"/api/equipment/{equipment_id}/channels", json={
-            "number": number,
-            "label": label or "",
-            "load": load or ""
-        }).json()
-    return make
-```
+| Test | What it checks |
+|---|---|
+| `test_create_channel` | POST → 200, all fields echoed back |
+| `test_list_channels_empty` | Equipment with no channels → `[]` |
+| `test_list_channels_sorted` | Channels inserted out-of-order; GET returns ascending by number |
+| `test_update_channel_fields` | PUT updates label, load, notes |
+| `test_update_channel_links_circuit` | PUT with valid `circuit_id` → 200, `circuit_id` set |
+| `test_update_channel_invalid_circuit` | PUT with nonexistent `circuit_id` → 404 |
+| `test_update_channel_unlinks_circuit` | PUT with `circuit_id: null` → 200, `circuit_id` becomes null |
+| `test_delete_channel` | DELETE → 200; subsequent GET returns empty list |
+| `test_duplicate_number_rejected` | POST same number twice for same equipment → second is 400 |
+| `test_channel_auto_generated` | `channel_count=3` on equipment create → three channels numbered 1–3 |
+| `test_auto_channels_ordered` | `channel_count=5` → GET returns numbers [1,2,3,4,5] in that order |
+| `test_channel_count_not_in_response` | Equipment response has no `channel_count` field |
+| `test_equipment_not_found_list` | GET channels for nonexistent equipment → 404 |
+| `test_equipment_not_found_create` | POST channel for nonexistent equipment → 404 |
+| `test_channel_not_found_update` | PUT nonexistent channel → 404 |
+| `test_channel_not_found_delete` | DELETE nonexistent channel → 404 |
 
 ---
 
-## Frontend-tester (Vitest)
+## Manual Smoke Test
 
-```javascript
-// frontend/src/__tests__/ChannelRegister.test.jsx
+Prerequisites: `uvicorn main:app --reload` on :8000, `npm run dev` on :5173.
 
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
-import { vi } from 'vitest'
-import ChannelRegister from '../components/ChannelRegister'
-import * as api from '../api/client'
-
-const wrapper = ({ children }) => (
-  <QueryClientProvider client={new QueryClient()}>
-    <MemoryRouter>{children}</MemoryRouter>
-  </QueryClientProvider>
-)
-
-const mockChannels = [
-  { id: 1, equipment_id: 1, number: 1, label: 'Lys stue', load: '6x LED', circuit_id: null, notes: '' },
-  { id: 2, equipment_id: 1, number: 2, label: '', load: '', circuit_id: null, notes: '' },
-  { id: 3, equipment_id: 1, number: 3, label: 'Lys gang', load: '3x LED', circuit_id: 1, notes: '' },
-]
-
-const mockCircuits = [
-  { id: 1, designation: 'B01', name: 'Lys stue' },
-  { id: 2, designation: 'B02', name: 'Stikk stue' },
-]
-
-test('viser kanalregistertabell med riktig antall rader', async () => {
-  vi.spyOn(api, 'getChannels').mockResolvedValue(mockChannels)
-  render(<ChannelRegister equipmentId={1} circuits={mockCircuits} />, { wrapper })
-  await waitFor(() => screen.getAllByRole('row'))
-  const rows = screen.getAllByTestId('channel-row')
-  expect(rows).toHaveLength(3)
-})
-
-test('viser "ikke koblet" for tomme kanaler', async () => {
-  vi.spyOn(api, 'getChannels').mockResolvedValue(mockChannels)
-  render(<ChannelRegister equipmentId={1} circuits={mockCircuits} />, { wrapper })
-  await waitFor(() => screen.getByText(/ikke koblet/i))
-})
-
-test('viser lenke til kurs for kanal med circuit_id', async () => {
-  vi.spyOn(api, 'getChannels').mockResolvedValue(mockChannels)
-  render(<ChannelRegister equipmentId={1} circuits={mockCircuits} />, { wrapper })
-  await waitFor(() => screen.getByText('B01'))
-  const link = screen.getByRole('link', { name: /B01/i })
-  expect(link).toHaveAttribute('href', '/kurs/1')
-})
-
-test('klikk på rad aktiverer inline redigering', async () => {
-  vi.spyOn(api, 'getChannels').mockResolvedValue(mockChannels)
-  render(<ChannelRegister equipmentId={1} circuits={mockCircuits} />, { wrapper })
-  await waitFor(() => screen.getByText('Lys stue'))
-  await userEvent.click(screen.getAllByTestId('channel-row')[0])
-  expect(screen.getByDisplayValue('Lys stue')).toBeInTheDocument()
-})
-
-test('escape avbryter redigering', async () => {
-  vi.spyOn(api, 'getChannels').mockResolvedValue(mockChannels)
-  render(<ChannelRegister equipmentId={1} circuits={mockCircuits} />, { wrapper })
-  await waitFor(() => screen.getByText('Lys stue'))
-  await userEvent.click(screen.getAllByTestId('channel-row')[0])
-  await userEvent.type(screen.getByDisplayValue('Lys stue'), 'endret')
-  fireEvent.keyDown(document, { key: 'Escape' })
-  expect(screen.getByText('Lys stue')).toBeInTheDocument()
-  expect(screen.queryByDisplayValue('Lys stuendret')).not.toBeInTheDocument()
-})
-
-test('legg til kanal gir ny rad i redigeringsmodus', async () => {
-  vi.spyOn(api, 'getChannels').mockResolvedValue(mockChannels)
-  vi.spyOn(api, 'createChannel').mockResolvedValue({
-    id: 4, equipment_id: 1, number: 4, label: '', load: '', circuit_id: null, notes: ''
-  })
-  render(<ChannelRegister equipmentId={1} circuits={mockCircuits} />, { wrapper })
-  await waitFor(() => screen.getByText(/legg til kanal/i))
-  await userEvent.click(screen.getByText(/legg til kanal/i))
-  await waitFor(() => screen.getAllByTestId('channel-row'))
-  expect(screen.getAllByTestId('channel-row')).toHaveLength(4)
-})
-
-test('dynalite viser antall kanaler pre-fylt med 12 i utstyrsskjema', async () => {
-  const { render: renderForm } = await import('../components/EquipmentForm')
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <EquipmentForm circuitId={1} onSave={() => {}} onCancel={() => {}} />
-      </MemoryRouter>
-    </QueryClientProvider>
-  )
-  fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'dynalite' } })
-  await waitFor(() => screen.getByLabelText(/antall kanaler/i))
-  expect(screen.getByLabelText(/antall kanaler/i)).toHaveValue(12)
-})
-
-test('shelly viser antall kanaler pre-fylt med 4', async () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <EquipmentForm circuitId={1} onSave={() => {}} onCancel={() => {}} />
-      </MemoryRouter>
-    </QueryClientProvider>
-  )
-  fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'shelly' } })
-  await waitFor(() => screen.getByLabelText(/antall kanaler/i))
-  expect(screen.getByLabelText(/antall kanaler/i)).toHaveValue(4)
-})
-```
+| Step | Action | Expected |
+|---|---|---|
+| 1 | Create property → panel → circuit | All 200 |
+| 2 | Open circuit detail, click Legg til utstyr | Dialog opens |
+| 3 | Select type **Dynalite** | "Antall kanaler" field appears, pre-filled **12** |
+| 4 | Change type to **Shelly** | Field updates to **4** |
+| 5 | Change type to **Varmepumpe** | "Antall kanaler" field disappears |
+| 6 | Change back to **Dynalite**, click Lagre | Equipment card appears with 12-row channel table |
+| 7 | Inspect 12 rows | All rows grayed, label and load both show "— ikke koblet —" |
+| 8 | Inspect DOM | Each `<tr>` in channel table has `data-testid="channel-row"` |
+| 9 | Click **Rediger** on row 1, fill Etikett "Lys gruppe A", press **Escape** | Row reverts, Etikett is empty |
+| 10 | Click Rediger on row 1 again, fill Etikett "Lys gruppe A", press **Enter** | Row saved, shows "Lys gruppe A" (not grayed) |
+| 11 | Click Rediger on row 2, select a circuit from Tilknyttet kurs, click Lagre | Circuit column shows designation as blue link |
+| 12 | Click the circuit link | Navigates to correct `/kurs/{id}` page |
+| 13 | Click **Legg til kanal** | New row appears with number 13 (grayed) |
+| 14 | Slett the extra row, confirm | Row disappears; 12 rows remain |
+| 15 | `POST /api/equipment/{id}/channels {"number":1}` | **400** duplicate number |
+| 16 | `PUT /api/channels/{id} {"circuit_id":99999}` | **404** circuit not found |
 
 ---
 
-## Kjøre testene
+## Definition of Done
 
-```bash
-# Backend
-cd backend && pytest tests/test_channels.py -v
-
-# Frontend
-cd frontend && npm run test -- ChannelRegister
-```
-
----
-
-## Smoketest – Fase 4b
-
-```
-Start backend and frontend, then perform a smoke test of channel functionality:
-- Navigate to an existing circuit
-- Add Dynalite equipment: type "dynalite", model "DDRC1220FR-GL", channel_count 12
-- Verify 12 empty channel rows appear in the channel register
-- Click channel 1 row and fill in: label "Lys stue gruppe A", load "6x LED downlight 9W"
-- Press Enter — verify the row is saved and exits edit mode
-- Click channel 2 row, start editing, press Escape — verify original values restored
-- Link channel 3 to an existing circuit via the dropdown
-- Verify the circuit appears as a clickable link
-- Add a manual channel via "Legg til kanal" — verify it gets number 13
-- Delete channel 13 with confirmation
-- Verify duplicate channel number (create two channels with number 1) returns 400
-Report HTTP status and result for each step.
-```
-
----
-
-## Definition of Done – Fase 4b
-
-Fase 4b er ferdig når:
-- [ ] Alle backend-tester er grønne (inkl. fase 1–4)
-- [ ] Alle frontend-tester er grønne (inkl. fase 1–4)
-- [ ] Alle 7 akseptansekriterier er manuelt verifisert
-- [ ] Dynalite-utstyr auto-genererer 12 kanaler
-- [ ] Shelly-utstyr auto-genererer 4 kanaler
-- [ ] Inline redigering fungerer med Enter og Escape
-- [ ] Kanalkoblingen til kurs vises som klikkbar lenke
-- [ ] Duplikat kanalnummer blokkeres med 400
-- [ ] Smoketest fullført uten feil
-- [ ] Kode pushet til `feature/fase4` og klar for merge
+- [ ] All 16 backend tests in `tests/test_channels.py` pass
+- [ ] All pre-existing tests (Phases 1–4) still pass
+- [ ] All 11 acceptance criteria manually verified
+- [ ] Code pushed to `feature/fase4`

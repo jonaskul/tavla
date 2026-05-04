@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getChannels, createChannel, updateChannel, deleteChannel, getCircuits } from '../api/client'
 import { t } from '../i18n/no'
@@ -65,7 +66,7 @@ export default function ChannelTable({ equipmentId, panelId }) {
   }
 
   const handleKeyDown = (e, id) => {
-    if (e.key === 'Enter') saveEdit(id)
+    if (e.key === 'Enter') { e.preventDefault(); saveEdit(id) }
     if (e.key === 'Escape') setEditingId(null)
   }
 
@@ -113,6 +114,7 @@ export default function ChannelTable({ equipmentId, panelId }) {
                 return (
                   <tr
                     key={ch.id}
+                    data-testid="channel-row"
                     className={`border-b border-gray-50 ${isEmpty ? 'text-gray-300' : 'text-gray-700'}`}
                   >
                     <td className="py-1.5 pr-3 text-gray-400 shrink-0">{ch.number}</td>
@@ -175,17 +177,34 @@ export default function ChannelTable({ equipmentId, panelId }) {
                       </>
                     ) : (
                       <>
-                        <td className={`py-1.5 pr-3 ${isEmpty ? 'italic' : ''}`}>
-                          {isEmpty ? t.channel.noCircuit : (ch.label || '—')}
+                        <td className="py-1.5 pr-3">
+                          {isEmpty
+                            ? <span className="italic">{t.channel.noCircuit}</span>
+                            : (ch.label || <span className="text-gray-300">—</span>)
+                          }
                         </td>
-                        <td className="py-1.5 pr-3">{ch.load || <span className="text-gray-300">—</span>}</td>
+                        <td className="py-1.5 pr-3">
+                          {isEmpty
+                            ? <span className="italic">{t.channel.noCircuit}</span>
+                            : (ch.load || <span className="text-gray-300">—</span>)
+                          }
+                        </td>
                         <td className="py-1.5 pr-3">
                           {linkedCircuit
-                            ? <span>{linkedCircuit.designation} {linkedCircuit.name}</span>
+                            ? (
+                              <Link
+                                to={`/kurs/${ch.circuit_id}`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {linkedCircuit.designation}
+                              </Link>
+                            )
                             : <span className="text-gray-300 italic">{t.channel.noCircuit}</span>
                           }
                         </td>
-                        <td className="py-1.5 pr-3">{ch.notes || <span className="text-gray-300">—</span>}</td>
+                        <td className="py-1.5 pr-3">
+                          {ch.notes || <span className="text-gray-300">—</span>}
+                        </td>
                         <td className="py-1 flex gap-1 justify-end">
                           <button
                             onClick={() => startEdit(ch)}

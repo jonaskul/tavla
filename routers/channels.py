@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from database import get_session
-from models import Channel
+from models import Channel, Circuit
 from schemas import ChannelRead, ChannelUpdate
 
 router = APIRouter()
@@ -15,6 +15,9 @@ def update_channel(
     channel = session.get(Channel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
+    if "circuit_id" in data.model_fields_set and data.circuit_id is not None:
+        if not session.get(Circuit, data.circuit_id):
+            raise HTTPException(status_code=404, detail="Circuit not found")
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(channel, field, value)
     session.add(channel)

@@ -148,6 +148,8 @@ EQUIPMENT_TYPE_LABELS = {
     "ev_charger": "Elbillader",
     "heat_pump": "Varmepumpe",
     "boiler": "Varmtvannsbereder",
+    "dynalite": "Dynalite",
+    "shelly": "Shelly",
     "other": "Annet",
 }
 

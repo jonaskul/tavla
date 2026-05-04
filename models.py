@@ -38,6 +38,8 @@ class EquipmentType(str, Enum):
     ev_charger = "ev_charger"
     heat_pump = "heat_pump"
     boiler = "boiler"
+    dynalite = "dynalite"
+    shelly = "shelly"
     other = "other"
 
 

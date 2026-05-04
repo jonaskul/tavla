@@ -126,6 +126,19 @@ def equipment_factory(client, circuit_factory):
 
 
 @pytest.fixture
+def channel_factory(client, equipment_factory):
+    def make(equipment_id=None, number=1, **kwargs):
+        if equipment_id is None:
+            eq = equipment_factory()
+            equipment_id = eq["id"]
+        return client.post(
+            f"/api/equipment/{equipment_id}/channels",
+            json={"number": number, **kwargs},
+        ).json()
+    return make
+
+
+@pytest.fixture
 def equipment_file_factory(client, equipment_factory):
     import io
     def make(equipment_id=None):

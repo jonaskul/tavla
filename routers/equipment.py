@@ -36,6 +36,8 @@ EQUIPMENT_TYPE_LABELS = {
     "ev_charger": "Elbillader",
     "heat_pump": "Varmepumpe",
     "boiler": "Varmtvannsbereder",
+    "dynalite": "Dynalite",
+    "shelly": "Shelly",
     "other": "Annet",
 }
 
@@ -211,6 +213,18 @@ def create_channel_for_equipment(
 ):
     if not session.get(Equipment, equipment_id):
         raise HTTPException(status_code=404, detail="Equipment not found")
+    duplicate = session.exec(
+        select(Channel)
+        .where(Channel.equipment_id == equipment_id)
+        .where(Channel.number == data.number)
+    ).first()
+    if duplicate:
+        raise HTTPException(
+            status_code=400,
+            detail="Channel number already used for this equipment",
+        )
+    if data.circuit_id is not None and not session.get(Circuit, data.circuit_id):
+        raise HTTPException(status_code=404, detail="Circuit not found")
     channel = Channel(equipment_id=equipment_id, **data.model_dump())
     session.add(channel)
     session.commit()

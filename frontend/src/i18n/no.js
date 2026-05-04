@@ -161,6 +161,8 @@ export const t = {
       ev_charger: "Elbillader",
       heat_pump: "Varmepumpe",
       boiler: "Varmtvannsbereder",
+      dynalite: "Dynalite",
+      shelly: "Shelly",
       other: "Annet",
     },
   },
