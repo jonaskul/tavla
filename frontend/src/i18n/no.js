@@ -64,6 +64,7 @@ export const t = {
   circuit: {
     title: "Kurs",
     add: "Legg til kurs",
+    edit: "Rediger kurs",
     designation: "Kursbetegnelse",
     name: "Navn",
     room: "Rom",
@@ -75,6 +76,11 @@ export const t = {
     connectionPoints: "Koblingspunkter",
     equipment: "Fastmontert utstyr",
     changelog: "Endringslogg",
+    noCircuits: "Ingen kurser registrert enda.",
+    designationRequired: "Kursbetegnelse er påkrevd",
+    nameRequired: "Navn er påkrevd",
+    cannotDeleteHasConnectionPoints: "Kan ikke slette kurs som har koblingspunkter. Slett koblingspunktene først.",
+    deleteError: "Kunne ikke slette kurs.",
   },
 
   // Connection point
