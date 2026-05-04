@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getProperty } from '../api/properties'
-import { getPanels, createPanel, deletePanel } from '../api/panels'
+import { getProperty, getPanels, createPanel, deletePanel } from '../api/client'
 import { t } from '../i18n/no'
 
 const emptyForm = { name: '', location: '', rows: 1, modules_per_row: 12, notes: '' }
@@ -14,18 +13,20 @@ export default function PropertyDetail() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
 
-  const { data: property, isLoading: loadingProp } = useQuery({
+  const { data: property, isLoading: loadingProp, isError } = useQuery({
     queryKey: ['property', propertyId],
     queryFn: () => getProperty(propertyId),
+    retry: false,
   })
 
   const { data: panels = [], isLoading: loadingPanels } = useQuery({
     queryKey: ['panels', propertyId],
     queryFn: () => getPanels(propertyId),
+    enabled: !!property,
   })
 
   const createMutation = useMutation({
-    mutationFn: (data) => createPanel({ ...data, property_id: propertyId }),
+    mutationFn: (data) => createPanel(propertyId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panels', propertyId] })
       setShowForm(false)
@@ -50,7 +51,7 @@ export default function PropertyDetail() {
   }
 
   if (loadingProp) return <p className="text-gray-500 text-sm">{t.common.loading}</p>
-  if (!property)
+  if (isError || !property)
     return <p className="text-red-500 text-sm">Eiendom ikke funnet.</p>
 
   return (
@@ -115,9 +116,7 @@ export default function PropertyDetail() {
                 max="10"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 value={form.rows}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, rows: Number(e.target.value) }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, rows: Number(e.target.value) }))}
               />
             </div>
             <div>

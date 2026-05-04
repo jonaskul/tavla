@@ -14,7 +14,7 @@ router = APIRouter()
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
 
 
-@router.get("/", response_model=List[FileRead])
+@router.get("", response_model=List[FileRead])
 def list_files(
     connection_point_id: Optional[int] = None,
     equipment_id: Optional[int] = None,
@@ -36,7 +36,7 @@ def get_file(file_id: int, session: Session = Depends(get_session)):
     return record
 
 
-@router.post("/", response_model=FileRead, status_code=201)
+@router.post("", response_model=FileRead)
 async def upload_file(
     file: UploadFile = FileField(...),
     connection_point_id: Optional[int] = Form(None),
@@ -65,12 +65,14 @@ async def upload_file(
     return record
 
 
-@router.delete("/{file_id}", status_code=204)
+@router.delete("/{file_id}", response_model=FileRead)
 def delete_file(file_id: int, session: Session = Depends(get_session)):
     record = session.get(File, file_id)
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
     if os.path.exists(record.local_path):
         os.remove(record.local_path)
+    record_data = FileRead.model_validate(record)
     session.delete(record)
     session.commit()
+    return record_data

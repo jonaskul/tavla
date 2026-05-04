@@ -9,7 +9,7 @@ from schemas import EquipmentCreate, EquipmentRead, EquipmentUpdate
 router = APIRouter()
 
 
-@router.get("/", response_model=List[EquipmentRead])
+@router.get("", response_model=List[EquipmentRead])
 def list_equipment(
     circuit_id: Optional[int] = None, session: Session = Depends(get_session)
 ):
@@ -27,7 +27,7 @@ def get_equipment(equipment_id: int, session: Session = Depends(get_session)):
     return item
 
 
-@router.post("/", response_model=EquipmentRead, status_code=201)
+@router.post("", response_model=EquipmentRead)
 def create_equipment(data: EquipmentCreate, session: Session = Depends(get_session)):
     if not session.get(Circuit, data.circuit_id):
         raise HTTPException(status_code=404, detail="Circuit not found")
@@ -53,10 +53,12 @@ def update_equipment(
     return item
 
 
-@router.delete("/{equipment_id}", status_code=204)
+@router.delete("/{equipment_id}", response_model=EquipmentRead)
 def delete_equipment(equipment_id: int, session: Session = Depends(get_session)):
     item = session.get(Equipment, equipment_id)
     if not item:
         raise HTTPException(status_code=404, detail="Equipment not found")
+    item_data = EquipmentRead.model_validate(item)
     session.delete(item)
     session.commit()
+    return item_data

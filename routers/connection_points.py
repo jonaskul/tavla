@@ -9,7 +9,7 @@ from schemas import ConnectionPointCreate, ConnectionPointRead, ConnectionPointU
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ConnectionPointRead])
+@router.get("", response_model=List[ConnectionPointRead])
 def list_connection_points(
     circuit_id: Optional[int] = None, session: Session = Depends(get_session)
 ):
@@ -27,7 +27,7 @@ def get_connection_point(cp_id: int, session: Session = Depends(get_session)):
     return cp
 
 
-@router.post("/", response_model=ConnectionPointRead, status_code=201)
+@router.post("", response_model=ConnectionPointRead)
 def create_connection_point(
     data: ConnectionPointCreate, session: Session = Depends(get_session)
 ):
@@ -57,10 +57,12 @@ def update_connection_point(
     return cp
 
 
-@router.delete("/{cp_id}", status_code=204)
+@router.delete("/{cp_id}", response_model=ConnectionPointRead)
 def delete_connection_point(cp_id: int, session: Session = Depends(get_session)):
     cp = session.get(ConnectionPoint, cp_id)
     if not cp:
         raise HTTPException(status_code=404, detail="Connection point not found")
+    cp_data = ConnectionPointRead.model_validate(cp)
     session.delete(cp)
     session.commit()
+    return cp_data

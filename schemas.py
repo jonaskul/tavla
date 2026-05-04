@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Optional
 from datetime import datetime
 
@@ -41,6 +41,15 @@ class PanelRead(BaseModel):
 
 class PanelCreate(BaseModel):
     property_id: int
+    name: str
+    location: str
+    rows: int = 1
+    modules_per_row: int = 12
+    notes: Optional[str] = None
+
+
+class PanelCreateNested(BaseModel):
+    """Body schema for POST /api/properties/{id}/panels (property_id from URL)."""
     name: str
     location: str
     rows: int = 1
@@ -114,6 +123,18 @@ class CircuitRead(BaseModel):
 
 class CircuitCreate(BaseModel):
     panel_id: int
+    designation: str
+    name: str
+    room: Optional[str] = None
+    cable_type: Optional[CableType] = None
+    cross_section: Optional[float] = None
+    conductor_count: Optional[int] = None
+    length_m: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class CircuitCreateNested(BaseModel):
+    """Body schema for POST /api/panels/{id}/circuits (panel_id from URL)."""
     designation: str
     name: str
     room: Optional[str] = None
@@ -225,7 +246,13 @@ class ChangeLogCreate(BaseModel):
     changed_by: str = "system"
     description: str
 
-
-class ChangeLogUpdate(BaseModel):
-    changed_by: Optional[str] = None
-    description: Optional[str] = None
+    @model_validator(mode="after")
+    def require_entity(self) -> "ChangeLogCreate":
+        if all(
+            v is None
+            for v in [self.circuit_id, self.connection_point_id, self.equipment_id]
+        ):
+            raise ValueError(
+                "At least one of circuit_id, connection_point_id, or equipment_id must be set"
+            )
+        return self

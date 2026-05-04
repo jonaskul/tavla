@@ -4,12 +4,12 @@ from typing import List, Optional
 
 from database import get_session
 from models import ChangeLog
-from schemas import ChangeLogCreate, ChangeLogRead, ChangeLogUpdate
+from schemas import ChangeLogCreate, ChangeLogRead
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ChangeLogRead])
+@router.get("", response_model=List[ChangeLogRead])
 def list_changelog(
     circuit_id: Optional[int] = None,
     connection_point_id: Optional[int] = None,
@@ -34,7 +34,7 @@ def get_changelog_entry(entry_id: int, session: Session = Depends(get_session)):
     return entry
 
 
-@router.post("/", response_model=ChangeLogRead, status_code=201)
+@router.post("", response_model=ChangeLogRead)
 def create_changelog_entry(
     data: ChangeLogCreate, session: Session = Depends(get_session)
 ):
@@ -44,26 +44,5 @@ def create_changelog_entry(
     session.refresh(entry)
     return entry
 
-
-@router.put("/{entry_id}", response_model=ChangeLogRead)
-def update_changelog_entry(
-    entry_id: int, data: ChangeLogUpdate, session: Session = Depends(get_session)
-):
-    entry = session.get(ChangeLog, entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Changelog entry not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(entry, field, value)
-    session.add(entry)
-    session.commit()
-    session.refresh(entry)
-    return entry
-
-
-@router.delete("/{entry_id}", status_code=204)
-def delete_changelog_entry(entry_id: int, session: Session = Depends(get_session)):
-    entry = session.get(ChangeLog, entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Changelog entry not found")
-    session.delete(entry)
-    session.commit()
+# PUT and DELETE are intentionally omitted — changelog is append-only.
+# FastAPI returns 405 Method Not Allowed for unregistered methods on known paths.

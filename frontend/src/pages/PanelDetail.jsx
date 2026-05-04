@@ -1,19 +1,27 @@
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getPanel } from '../api/panels'
+import { getPanel, getCircuits } from '../api/client'
 import { t } from '../i18n/no'
 
 export default function PanelDetail() {
   const { id } = useParams()
   const panelId = Number(id)
 
-  const { data: panel, isLoading } = useQuery({
+  const { data: panel, isLoading, isError } = useQuery({
     queryKey: ['panel', panelId],
     queryFn: () => getPanel(panelId),
+    retry: false,
+  })
+
+  const { data: circuits = [], isLoading: loadingCircuits } = useQuery({
+    queryKey: ['circuits', panelId],
+    queryFn: () => getCircuits(panelId),
+    enabled: !!panel,
   })
 
   if (isLoading) return <p className="text-gray-500 text-sm">{t.common.loading}</p>
-  if (!panel) return <p className="text-red-500 text-sm">Sikringsskap ikke funnet.</p>
+  if (isError || !panel)
+    return <p className="text-red-500 text-sm">Sikringsskap ikke funnet.</p>
 
   return (
     <div>
@@ -43,12 +51,39 @@ export default function PanelDetail() {
         )}
       </div>
 
-      <div className="rounded-lg border border-dashed border-yellow-400 bg-yellow-50 p-6 text-center text-sm text-yellow-800">
-        <p className="font-medium mb-1">{t.panel.configure}</p>
-        <p className="text-yellow-700">
+      <div className="rounded-lg border border-dashed border-yellow-400 bg-yellow-50 p-4 text-sm text-yellow-800 mb-6">
+        <p className="font-medium">Skap-mockup kjem i Fase 2</p>
+        <p className="text-yellow-700 text-xs mt-1">
           Visuell skemontasje og modulkonfigurasjon kjem i fase 2.
         </p>
       </div>
+
+      <h2 className="text-lg font-semibold text-gray-800 mb-3">{t.nav.circuit}</h2>
+
+      {loadingCircuits ? (
+        <p className="text-gray-500 text-sm">{t.common.loading}</p>
+      ) : circuits.length === 0 ? (
+        <p className="text-gray-500 text-sm">Ingen kurser registrert enda.</p>
+      ) : (
+        <ul className="space-y-2">
+          {circuits.map((circuit) => (
+            <li
+              key={circuit.id}
+              className="bg-white border border-gray-200 rounded-lg px-5 py-3 shadow-sm"
+            >
+              <Link
+                to={`/kurs/${circuit.id}`}
+                className="font-medium text-blue-700 hover:underline"
+              >
+                {circuit.designation} — {circuit.name}
+              </Link>
+              {circuit.room && (
+                <p className="text-sm text-gray-500 mt-0.5">{circuit.room}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

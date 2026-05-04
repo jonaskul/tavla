@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getProperties, createProperty, deleteProperty } from '../api/properties'
+import { getProperties, createProperty, deleteProperty } from '../api/client'
 import { t } from '../i18n/no'
 
 const emptyForm = { name: '', address: '' }
@@ -10,6 +10,7 @@ export default function Properties() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [errors, setErrors] = useState({})
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
@@ -22,6 +23,7 @@ export default function Properties() {
       queryClient.invalidateQueries({ queryKey: ['properties'] })
       setShowForm(false)
       setForm(emptyForm)
+      setErrors({})
     },
   })
 
@@ -32,6 +34,14 @@ export default function Properties() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const newErrors = {}
+    if (!form.name.trim()) newErrors.name = 'Navn er påkrevd'
+    if (!form.address.trim()) newErrors.address = 'Adresse er påkrevd'
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    setErrors({})
     createMutation.mutate(form)
   }
 
@@ -56,6 +66,7 @@ export default function Properties() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
+          noValidate
           className="bg-white border border-gray-200 rounded-lg p-5 mb-6 shadow-sm"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -67,9 +78,11 @@ export default function Properties() {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                required
                 autoFocus
               />
+              {errors.name && (
+                <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -79,8 +92,10 @@ export default function Properties() {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 value={form.address}
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                required
               />
+              {errors.address && (
+                <p className="text-red-500 text-xs mt-1">{errors.address}</p>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -96,6 +111,7 @@ export default function Properties() {
               onClick={() => {
                 setShowForm(false)
                 setForm(emptyForm)
+                setErrors({})
               }}
               className="border border-gray-300 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition-colors"
             >
