@@ -8,6 +8,20 @@ bilder/dokumenter, fastmontert utstyr og endringslogg per kurs.
 
 ---
 
+## Faseoversikt
+
+| Fase | Innhold | Status |
+|---|---|---|
+| 1 | Fundament – CRUD-routers + React-grunnstruktur | ✅ Ferdig |
+| 2 | Skap-mockup (PanelCanvas, DinRail, Module) | ✅ Ferdig |
+| 3 | Kurs og koblingspunkter | 🔲 Ikke startet |
+| 4 | Fastmontert utstyr | 🔲 Ikke startet |
+| 5 | Eksport og R2 | 🔲 Ikke startet |
+| 6 | Auth | 🔲 Ikke startet |
+| 7 | Installatørportal | 🔲 Ikke startet |
+
+---
+
 ## Språkkonvensjon
 
 | Lag | Språk |
@@ -226,6 +240,43 @@ GET    /api/panels/{id}/export/pdf
 - [ ] Brukermodell
 - [ ] Beskyttede endepunkter
 - [ ] Login-side i React
+
+### Fase 7 – Installatørportal
+
+**Datamodell:**
+```
+ShareLink
+├── id
+├── property_id        # FK to Property
+├── token              # UUID used in URL
+├── created_by         # user id (from Phase 6)
+├── expires_at         # derived from duration_days
+├── duration_days      # 1, 7, 14 or 30
+├── is_active          # owner can deactivate manually
+├── permissions        # JSON: {connection_points, equipment, files, comments}
+└── created_at
+```
+
+**Flyt:**
+- Eier genererer lenke på eiendomssiden – velger varighet (1, 7, 14, 30 dager) og tillatelser
+- URL-format: `http://tavla.local/installer/{token}`
+- Installatør åpner lenken → mobilvennlig minimumsvisning av eiendommen
+- Viser skap → kurs → installatør kan legge til koblingspunkter, utstyr, filer og kommentarer per kurs
+- Utløpte eller deaktiverte lenker returnerer 403
+- Eier ser alle genererte lenker med status (aktiv/utløpt/deaktivert) og kan deaktivere manuelt
+
+**Byggrekkefølge:**
+- [ ] ShareLink-modell og migrering
+- [ ] `POST /api/share` — generer lenke (autentisert)
+- [ ] `GET /api/share` — list lenker for eiendom (autentisert)
+- [ ] `DELETE /api/share/{token}` — deaktiver lenke (autentisert)
+- [ ] `GET /api/installer/{token}` — offentlig endepunkt, validerer token og returnerer eiendomsdata med tillatelser
+- [ ] `POST /api/installer/{token}/connection_points` — scoped av tillatelser
+- [ ] `POST /api/installer/{token}/equipment` — scoped av tillatelser
+- [ ] `POST /api/installer/{token}/files` — scoped av tillatelser
+- [ ] `POST /api/installer/{token}/comments` — scoped av tillatelser
+- [ ] React-rute `/installer/:token` — mobilfirst minimalt UI på norsk
+- [ ] Lenkeadministrasjon på eiendomssiden
 
 ---
 
