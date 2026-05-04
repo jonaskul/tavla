@@ -24,12 +24,13 @@ echo ""
 
 # ─── Velg branch ──────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/jonaskul/tavla.git"
+GITHUB_API="https://api.github.com/repos/jonaskul/tavla/branches?per_page=100"
 info "Henter tilgjengelige branches fra GitHub..."
 
 mapfile -t BRANCHES < <(
-    git ls-remote --heads "$REPO_URL" 2>/dev/null \
-        | awk '{print $2}' \
-        | sed 's|refs/heads/||' \
+    curl -sf --max-time 10 "$GITHUB_API" 2>/dev/null \
+        | grep -o '"name":"[^"]*"' \
+        | sed 's/"name":"//;s/"//' \
         | sort \
     || true
 )
