@@ -257,7 +257,7 @@ systemctl start tavla
 
 echo "==> Configuring nginx..."
 rm -f /etc/nginx/sites-enabled/default
-cat > /etc/nginx/sites-available/tavla <<NGXEOF
+cat > /etc/nginx/sites-available/tavla <<'NGXEOF'
 server {
     listen 80 default_server;
     server_name _;
@@ -267,13 +267,13 @@ server {
 
     location /api/ {
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \\$host;
-        proxy_set_header X-Real-IP \\$remote_addr;
-        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     location / {
-        try_files \\$uri \\$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
     }
 }
 NGXEOF
@@ -285,10 +285,10 @@ systemctl restart nginx
 
 echo "==> Configuring auto-login as root on console..."
 mkdir -p /etc/systemd/system/console-getty.service.d
-cat > /etc/systemd/system/console-getty.service.d/autologin.conf <<AUTOEOF
+cat > /etc/systemd/system/console-getty.service.d/autologin.conf <<'AUTOEOF'
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \\$TERM
+ExecStart=-/sbin/agetty --autologin root --noclear %I $TERM
 AUTOEOF
 systemctl daemon-reload
 
