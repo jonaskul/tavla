@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import os
 
 from database import create_db_and_tables
-from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog
+from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog, modules
 
 
 @asynccontextmanager
@@ -38,6 +38,7 @@ app.include_router(equipment.router, prefix="/api/equipment", tags=["equipment"]
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(changelog.router, prefix="/api/changelog", tags=["changelog"])
+app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 
 
 @app.get("/api/health")

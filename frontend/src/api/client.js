@@ -45,3 +45,13 @@ export const getChangelog = (params) =>
   http.get('/changelog', { params }).then((r) => r.data)
 export const createChangelogEntry = (data) =>
   http.post('/changelog', data).then((r) => r.data)
+
+// --- Modules ---
+export const getModules = (panelId) =>
+  http.get(`/panels/${panelId}/modules`).then((r) => r.data)
+export const createModule = (panelId, data) =>
+  http.post(`/panels/${panelId}/modules`, data).then((r) => r.data)
+export const updateModule = (id, data) =>
+  http.put(`/modules/${id}`, data).then((r) => r.data)
+export const deleteModule = (id) =>
+  http.delete(`/modules/${id}`).then((r) => r.data)
