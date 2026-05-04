@@ -15,16 +15,23 @@ export const t = {
   property: {
     title: "Eiendommer",
     add: "Legg til eiendom",
+    edit: "Rediger eiendom",
     name: "Navn",
     address: "Adresse",
     panels: "Sikringsskap",
     noProperties: "Ingen eiendommer registrert",
+    nameRequired: "Navn er påkrevd",
+    addressRequired: "Adresse er påkrevd",
+    deleteConfirm: "Er du sikker på at du vil slette eiendommen? Dette kan ikke angres.",
+    cannotDeleteHasPanels: "Kan ikke slette eiendom som har sikringsskap. Slett skapene først.",
+    deleteError: "Kunne ikke slette eiendommen.",
   },
 
   // Panel
   panel: {
     title: "Sikringsskap",
     add: "Legg til skap",
+    edit: "Rediger skap",
     name: "Navn",
     location: "Plassering",
     rows: "Antall skinnerader",
@@ -37,6 +44,11 @@ export const t = {
     addModule: "Legg til modul",
     editModule: "Rediger modul",
     deleteModule: "Slett modul",
+    nameRequired: "Navn er påkrevd",
+    locationRequired: "Plassering er påkrevd",
+    deleteConfirm: "Er du sikker på at du vil slette sikringsskapet? Dette kan ikke angres.",
+    cannotDeleteHasCircuits: "Kan ikke slette sikringsskap som har kurser. Slett kursene først.",
+    deleteError: "Kunne ikke slette sikringsskapet.",
   },
 
   module: {
@@ -64,6 +76,7 @@ export const t = {
   circuit: {
     title: "Kurs",
     add: "Legg til kurs",
+    edit: "Rediger kurs",
     designation: "Kursbetegnelse",
     name: "Navn",
     room: "Rom",
@@ -75,16 +88,28 @@ export const t = {
     connectionPoints: "Koblingspunkter",
     equipment: "Fastmontert utstyr",
     changelog: "Endringslogg",
+    noCircuits: "Ingen kurser registrert enda.",
+    designationRequired: "Kursbetegnelse er påkrevd",
+    nameRequired: "Navn er påkrevd",
+    deleteConfirm: "Er du sikker på at du vil slette kursen? Dette kan ikke angres.",
+    cannotDeleteHasConnectionPoints: "Kan ikke slette kurs som har koblingspunkter. Slett koblingspunktene først.",
+    deleteError: "Kunne ikke slette kursen.",
   },
 
   // Connection point
   connectionPoint: {
     title: "Koblingspunkt",
     add: "Legg til koblingspunkt",
+    edit: "Rediger koblingspunkt",
     type: "Type",
     location: "Plassering",
     notes: "Kommentar",
     files: "Filer og bilder",
+    typeRequired: "Type er påkrevd",
+    locationRequired: "Plassering er påkrevd",
+    noConnectionPoints: "Ingen koblingspunkter registrert",
+    cannotDeleteHasFiles: "Kan ikke slette koblingspunkt som har filer. Slett filene først.",
+    deleteError: "Kunne ikke slette koblingspunkt.",
     types: {
       junction_box: "Koblingsboks",
       outlet: "Stikkontakt",
@@ -118,6 +143,10 @@ export const t = {
     upload: "Last opp fil",
     uploadHint: "Slipp filer her eller klikk for å velge",
     acceptedTypes: "JPG, PNG, PDF opptil 20 MB",
+    invalidType: "Filtype ikke støttet. Kun JPG, PNG og PDF er tillatt.",
+    tooLarge: "Filen er for stor. Maks 20 MB",
+    uploadError: "Filopplasting feilet",
+    deleteConfirm: "Er du sikker på at du vil slette filen?",
   },
 
   // Changelog
@@ -128,6 +157,8 @@ export const t = {
     description: "Beskrivelse",
     changedAt: "Tidspunkt",
     noEntries: "Ingen endringer registrert",
+    changedByRequired: "Utført av er påkrevd",
+    descriptionRequired: "Beskrivelse er påkrevd",
   },
 
   // Common

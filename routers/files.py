@@ -1,7 +1,9 @@
 import os
+import re
 import uuid
 
-from fastapi import APIRouter, Depends, File as FileField, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File as FileField, Form, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 from typing import List, Optional
 
@@ -12,6 +14,37 @@ from schemas import FileRead
 router = APIRouter()
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+ALLOWED_MIMETYPES = {"image/jpeg", "image/png", "application/pdf"}
+
+MAGIC_BYTES = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG\r\n\x1a\n": "image/png",
+    b"%PDF": "application/pdf",
+}
+
+
+def detect_mimetype(content: bytes) -> Optional[str]:
+    for magic, mime in MAGIC_BYTES.items():
+        if content[: len(magic)] == magic:
+            return mime
+    return None
+
+
+def resolve_mimetype(content: bytes, content_type: str) -> Optional[str]:
+    """Determine mimetype: magic bytes take priority; fall back to content-type header."""
+    magic = detect_mimetype(content)
+    if magic is not None:
+        return magic if magic in ALLOWED_MIMETYPES else None
+    return content_type if content_type in ALLOWED_MIMETYPES else None
+
+
+def sanitize_filename(filename: str) -> str:
+    name = filename.replace("\\", "/").split("/")[-1]
+    name = re.sub(r"\.\.+", ".", name)
+    name = re.sub(r"[^\w\-. ]", "_", name)
+    name = name.strip(". ").strip()
+    return name or "file"
 
 
 @router.get("", response_model=List[FileRead])
@@ -29,11 +62,76 @@ def list_files(
 
 
 @router.get("/{file_id}", response_model=FileRead)
-def get_file(file_id: int, session: Session = Depends(get_session)):
+def get_file_meta(file_id: int, session: Session = Depends(get_session)):
     record = session.get(File, file_id)
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
     return record
+
+
+@router.get("/{file_id}/content")
+def get_file_content(file_id: int, session: Session = Depends(get_session)):
+    record = session.get(File, file_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+    if not os.path.exists(record.local_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    return FileResponse(
+        path=record.local_path,
+        media_type=record.mimetype,
+        filename=record.filename,
+    )
+
+
+async def _handle_upload(
+    file: UploadFile,
+    connection_point_id: Optional[int],
+    equipment_id: Optional[int],
+    session: Session,
+) -> File:
+    content = await file.read()
+
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 20 MB)")
+
+    real_mime = resolve_mimetype(content, file.content_type or "")
+    if real_mime is None:
+        raise HTTPException(status_code=400, detail="Filtype ikke støttet. Kun JPG, PNG og PDF er tillatt.")
+
+    safe_name = sanitize_filename(file.filename or "file")
+    ext = os.path.splitext(safe_name)[1]
+    unique_name = f"{uuid.uuid4()}{ext}"
+
+    subdir = str(connection_point_id) if connection_point_id is not None else "misc"
+    dest_dir = os.path.join(UPLOAD_DIR, subdir)
+    os.makedirs(dest_dir, exist_ok=True)
+    local_path = os.path.join(dest_dir, unique_name)
+
+    with open(local_path, "wb") as fh:
+        fh.write(content)
+
+    record = File(
+        connection_point_id=connection_point_id,
+        equipment_id=equipment_id,
+        filename=safe_name,
+        mimetype=real_mime,
+        local_path=local_path,
+    )
+    session.add(record)
+    session.commit()
+    session.refresh(record)
+    return record
+
+
+@router.post("/upload", response_model=FileRead)
+async def upload_file_legacy(
+    file: UploadFile = FileField(...),
+    connection_point_id: Optional[int] = Query(None),
+    equipment_id: Optional[int] = Query(None),
+    session: Session = Depends(get_session),
+):
+    """POST /api/files/upload — connection_point_id as query parameter."""
+    return await _handle_upload(file, connection_point_id, equipment_id, session)
 
 
 @router.post("", response_model=FileRead)
@@ -43,26 +141,8 @@ async def upload_file(
     equipment_id: Optional[int] = Form(None),
     session: Session = Depends(get_session),
 ):
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    ext = os.path.splitext(file.filename or "")[1]
-    unique_name = f"{uuid.uuid4()}{ext}"
-    local_path = os.path.join(UPLOAD_DIR, unique_name)
-
-    content = await file.read()
-    with open(local_path, "wb") as fh:
-        fh.write(content)
-
-    record = File(
-        connection_point_id=connection_point_id,
-        equipment_id=equipment_id,
-        filename=file.filename or unique_name,
-        mimetype=file.content_type or "application/octet-stream",
-        local_path=local_path,
-    )
-    session.add(record)
-    session.commit()
-    session.refresh(record)
-    return record
+    """POST /api/files — connection_point_id as form field."""
+    return await _handle_upload(file, connection_point_id, equipment_id, session)
 
 
 @router.delete("/{file_id}", response_model=FileRead)

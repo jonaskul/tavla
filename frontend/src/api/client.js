@@ -34,7 +34,28 @@ export const deleteCircuit = (id) => http.delete(`/circuits/${id}`)
 
 // --- ConnectionPoints ---
 export const getConnectionPoints = (circuitId) =>
-  http.get('/connection_points', { params: { circuit_id: circuitId } }).then((r) => r.data)
+  http.get(`/circuits/${circuitId}/connection_points`).then((r) => r.data)
+export const getConnectionPoint = (id) =>
+  http.get(`/connection_points/${id}`).then((r) => r.data)
+export const createConnectionPoint = (circuitId, data) =>
+  http.post(`/circuits/${circuitId}/connection_points`, data).then((r) => r.data)
+export const updateConnectionPoint = (id, data) =>
+  http.put(`/connection_points/${id}`, data).then((r) => r.data)
+export const deleteConnectionPoint = (id) =>
+  http.delete(`/connection_points/${id}`).then((r) => r.data)
+
+// --- Files ---
+export const getConnectionPointFiles = (cpId) =>
+  http.get(`/connection_points/${cpId}/files`).then((r) => r.data)
+export const uploadFile = (cpId, file) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return http.post(`/connection_points/${cpId}/files`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data)
+}
+export const deleteFile = (id) => http.delete(`/files/${id}`).then((r) => r.data)
+export const getFileContentUrl = (id) => `/api/files/${id}/content`
 
 // --- Equipment ---
 export const getEquipment = (circuitId) =>
