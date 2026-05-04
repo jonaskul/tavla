@@ -13,6 +13,7 @@ export const getProperty = (id) => http.get(`/properties/${id}`).then((r) => r.d
 export const createProperty = (data) => http.post('/properties', data).then((r) => r.data)
 export const updateProperty = (id, data) => http.put(`/properties/${id}`, data).then((r) => r.data)
 export const deleteProperty = (id) => http.delete(`/properties/${id}`)
+export const exportProperty = (id) => http.get(`/export/${id}`).then((r) => r.data)
 
 // --- Panels ---
 export const getPanels = (propertyId) =>
@@ -35,8 +36,6 @@ export const deleteCircuit = (id) => http.delete(`/circuits/${id}`)
 // --- ConnectionPoints ---
 export const getConnectionPoints = (circuitId) =>
   http.get(`/circuits/${circuitId}/connection_points`).then((r) => r.data)
-export const getConnectionPoint = (id) =>
-  http.get(`/connection_points/${id}`).then((r) => r.data)
 export const createConnectionPoint = (circuitId, data) =>
   http.post(`/circuits/${circuitId}/connection_points`, data).then((r) => r.data)
 export const updateConnectionPoint = (id, data) =>

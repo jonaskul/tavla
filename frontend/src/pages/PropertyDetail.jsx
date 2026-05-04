@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getProperty, updateProperty, deleteProperty, getPanels, createPanel, updatePanel, deletePanel } from '../api/client'
+import { getProperty, updateProperty, deleteProperty, getPanels, createPanel, updatePanel, deletePanel, exportProperty } from '../api/client'
 import { t } from '../i18n/no'
 import PropertyDialog from '../components/PropertyDialog'
 import PanelDialog from '../components/PanelDialog'
@@ -17,6 +17,8 @@ export default function PropertyDetail() {
   const [propDeleteConfirm, setPropDeleteConfirm] = useState({ open: false, error: null })
   const [panelDialog, setPanelDialog] = useState({ open: false, item: null })
   const [panelDeleteConfirm, setPanelDeleteConfirm] = useState({ open: false, item: null, error: null })
+  const [exporting, setExporting] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const { data: property, isLoading: loadingProp, isError } = useQuery({
     queryKey: ['property', propertyId],
@@ -93,6 +95,32 @@ export default function PropertyDetail() {
     }
   }
 
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const data = await exportProperty(propertyId)
+      const slug = property.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')
+      const date = new Date().toISOString().slice(0, 10)
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `tavla-${slug}-${date}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      showToast(t.property.exportSuccess)
+    } catch {
+      showToast(t.property.exportError, 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   if (loadingProp) return <p className="text-gray-500 text-sm">{t.common.loading}</p>
   if (isError || !property)
     return <p className="text-red-500 text-sm">Eiendom ikke funnet.</p>
@@ -112,6 +140,13 @@ export default function PropertyDetail() {
           <p className="text-gray-500 text-sm mt-1">{property.address}</p>
         </div>
         <div className="flex gap-2 shrink-0">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          >
+            {exporting ? t.common.loading : t.property.export}
+          </button>
           <button
             onClick={() => setPropDialog(true)}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
@@ -212,6 +247,16 @@ export default function PropertyDetail() {
         onConfirm={() => deletePanelMutation.mutate(panelDeleteConfirm.item.id)}
         onClose={() => setPanelDeleteConfirm({ open: false, item: null, error: null })}
       />
+
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm text-white transition-opacity ${
+            toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   )
 }

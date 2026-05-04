@@ -25,6 +25,9 @@ export const t = {
     deleteConfirm: "Er du sikker på at du vil slette eiendommen? Dette kan ikke angres.",
     cannotDeleteHasPanels: "Kan ikke slette eiendom som har sikringsskap. Slett skapene først.",
     deleteError: "Kunne ikke slette eiendommen.",
+    export: "Eksporter JSON",
+    exportSuccess: "JSON-eksport lastet ned",
+    exportError: "Eksport feilet. Prøv igjen.",
   },
 
   // Panel
