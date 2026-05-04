@@ -2,7 +2,39 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Optional
 from datetime import datetime
 
-from models import CableType, ChannelType, ConnectionPointType, EquipmentType, ModuleType
+from models import CableType, ChannelType, ConnectionPointType, EquipmentType
+
+
+# --- ModuleTypeDefinition ---
+
+class ModuleTypeDefinitionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    key: str
+    name_no: str
+    color: str
+    abbreviation: str
+    can_have_circuit: bool
+    can_have_ampere: bool
+    is_builtin: bool
+    created_at: datetime
+
+
+class ModuleTypeDefinitionCreate(BaseModel):
+    key: str
+    name_no: str
+    color: str
+    abbreviation: str
+    can_have_circuit: bool = False
+    can_have_ampere: bool = False
+
+
+class ModuleTypeDefinitionUpdate(BaseModel):
+    name_no: Optional[str] = None
+    color: Optional[str] = None
+    abbreviation: Optional[str] = None
+    can_have_circuit: Optional[bool] = None
+    can_have_ampere: Optional[bool] = None
 
 
 # --- Property ---
@@ -74,7 +106,7 @@ class ModuleRead(BaseModel):
     row: int
     position: int
     width: int
-    type: ModuleType
+    type: str
     label: Optional[str] = None
     ampere: Optional[int] = None
     has_rcd: bool
@@ -87,7 +119,7 @@ class ModuleCreate(BaseModel):
     row: int
     position: int
     width: int = 1
-    type: ModuleType
+    type: str
     label: Optional[str] = None
     ampere: Optional[int] = None
     has_rcd: bool = False
@@ -99,7 +131,7 @@ class ModuleUpdate(BaseModel):
     row: Optional[int] = None
     position: Optional[int] = None
     width: Optional[int] = None
-    type: Optional[ModuleType] = None
+    type: Optional[str] = None
     label: Optional[str] = None
     ampere: Optional[int] = None
     has_rcd: Optional[bool] = None
@@ -112,7 +144,7 @@ class ModuleCreateNested(BaseModel):
     row: int
     position: int
     width: int = 1
-    type: ModuleType
+    type: str
     label: Optional[str] = None
     ampere: Optional[int] = None
     has_rcd: bool = False

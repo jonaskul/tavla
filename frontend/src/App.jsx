@@ -4,18 +4,23 @@ import Properties from './pages/Properties'
 import PropertyDetail from './pages/PropertyDetail'
 import PanelDetail from './pages/PanelDetail'
 import CircuitDetail from './pages/CircuitDetail'
+import ModuleTypeSettings from './pages/ModuleTypeSettings'
 import NotFound from './pages/NotFound'
+import { ModuleTypesProvider } from './contexts/ModuleTypesContext'
 
 export default function App() {
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Properties />} />
-        <Route path="/eiendommer/:id" element={<PropertyDetail />} />
-        <Route path="/skap/:id" element={<PanelDetail />} />
-        <Route path="/kurs/:id" element={<CircuitDetail />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Layout>
+    <ModuleTypesProvider>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Properties />} />
+          <Route path="/eiendommer/:id" element={<PropertyDetail />} />
+          <Route path="/skap/:id" element={<PanelDetail />} />
+          <Route path="/kurs/:id" element={<CircuitDetail />} />
+          <Route path="/innstillinger/modultyper" element={<ModuleTypeSettings />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Layout>
+    </ModuleTypesProvider>
   )
 }

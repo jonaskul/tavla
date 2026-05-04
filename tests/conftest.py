@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, Session, create_engine
 
 from database import get_session
 from main import app
+from routers.module_types import seed_builtin_types
 
 
 @pytest.fixture(name="client")
@@ -15,6 +16,8 @@ def client_fixture():
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        seed_builtin_types(session)
 
     def get_test_session():
         with Session(engine) as session:

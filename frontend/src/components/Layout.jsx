@@ -25,6 +25,16 @@ export default function Layout({ children }) {
             >
               {t.nav.properties}
             </Link>
+            <Link
+              to="/innstillinger/modultyper"
+              className={
+                pathname.startsWith('/innstillinger')
+                  ? 'text-blue-700 font-medium'
+                  : 'text-gray-600 hover:text-blue-600'
+              }
+            >
+              {t.nav.settings}
+            </Link>
           </nav>
         </div>
       </header>

@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react'
 import { t } from '../../i18n/no'
-
-const AMPERE_TYPES  = new Set(['breaker', 'rcd', 'rcd_breaker', 'main_switch'])
-const CIRCUIT_TYPES = new Set(['breaker', 'rcd_breaker'])
-
-const ALL_TYPES = [
-  'breaker', 'rcd', 'rcd_breaker', 'shelly', 'dynalite', 'surge_protection', 'main_switch', 'other',
-]
+import { useModuleTypes } from '../../contexts/ModuleTypesContext'
 
 export default function ModuleDialog({
   open,
@@ -16,6 +10,8 @@ export default function ModuleDialog({
   onDelete,
   onClose,
 }) {
+  const { types } = useModuleTypes()
+
   const [form, setForm] = useState({
     type:       existing?.type       ?? '',
     ampere:     existing?.ampere     ?? '',
@@ -26,7 +22,6 @@ export default function ModuleDialog({
   })
   const [errors, setErrors] = useState({})
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return
     const handle = (e) => { if (e.key === 'Escape') onClose() }
@@ -36,8 +31,9 @@ export default function ModuleDialog({
 
   if (!open) return null
 
-  const showAmpere  = AMPERE_TYPES.has(form.type)
-  const showCircuit = CIRCUIT_TYPES.has(form.type) && !form.is_vacant
+  const selectedType = types.find((t) => t.key === form.type)
+  const showAmpere  = selectedType?.can_have_ampere ?? false
+  const showCircuit = (selectedType?.can_have_circuit ?? false) && !form.is_vacant
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -86,8 +82,8 @@ export default function ModuleDialog({
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
             >
               <option value="">— Velg type —</option>
-              {ALL_TYPES.map((type) => (
-                <option key={type} value={type}>{t.moduleType[type]}</option>
+              {types.map((mt) => (
+                <option key={mt.key} value={mt.key}>{mt.name_no}</option>
               ))}
             </select>
             {errors.type && (
@@ -95,7 +91,7 @@ export default function ModuleDialog({
             )}
           </div>
 
-          {/* Ampere — breaker + rcd + rcd_breaker + main_switch */}
+          {/* Ampere */}
           {showAmpere && (
             <div>
               <label htmlFor="mod-ampere" className="block text-sm font-medium text-gray-700 mb-1">
@@ -114,7 +110,7 @@ export default function ModuleDialog({
             </div>
           )}
 
-          {/* Label — always shown */}
+          {/* Label */}
           <div>
             <label htmlFor="mod-label" className="block text-sm font-medium text-gray-700 mb-1">
               {t.module.label}
@@ -130,7 +126,7 @@ export default function ModuleDialog({
             />
           </div>
 
-          {/* Circuit — breaker + rcd_breaker only, hidden when vacant */}
+          {/* Circuit */}
           {showCircuit && (
             <div>
               <label htmlFor="mod-circuit" className="block text-sm font-medium text-gray-700 mb-1">

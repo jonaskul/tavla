@@ -9,6 +9,7 @@ export const t = {
     circuit: "Kurs",
     connectionPoint: "Koblingspunkt",
     equipment: "Fastmontert utstyr",
+    settings: "Innstillinger",
   },
 
   // Properties
@@ -197,6 +198,38 @@ export const t = {
     noEntries: "Ingen endringer registrert",
     changedByRequired: "Utført av er påkrevd",
     descriptionRequired: "Beskrivelse er påkrevd",
+  },
+
+  // Settings
+  settings: {
+    title: "Innstillinger",
+    moduleTypes: {
+      title: "Modultyper",
+      add: "Legg til modultype",
+      edit: "Rediger modultype",
+      key: "Nøkkel",
+      keyHint: "Unik identifikator, f.eks. my_custom_type",
+      name: "Navn",
+      color: "Farge",
+      abbreviation: "Forkortelse",
+      abbreviationHint: "Maks 3 tegn, vises i skap-oversikten",
+      canHaveCircuit: "Kan kobles til kurs",
+      canHaveAmpere: "Har ampere-verdi",
+      usage: "I bruk",
+      modules: "moduler",
+      builtin: "Innebygd",
+      custom: "Egendefinert",
+      deleteBlocked: "Kan ikke slettes — slett alle moduler av denne typen først",
+      builtinDeleteBlocked: "Innebygd type kan ikke slettes",
+      keyRequired: "Nøkkel er påkrevd",
+      nameRequired: "Navn er påkrevd",
+      colorRequired: "Farge er påkrevd",
+      abbreviationRequired: "Forkortelse er påkrevd",
+      keyExists: "Denne nøkkelen er allerede i bruk",
+      deleteConfirm: "Er du sikker på at du vil slette denne modultypen?",
+      deleteError: "Kunne ikke slette modultypen.",
+      noTypes: "Ingen modultyper registrert",
+    },
   },
 
   // Common

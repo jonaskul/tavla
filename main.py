@@ -4,13 +4,17 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 
-from database import create_db_and_tables
-from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog, modules, channels
+from database import create_db_and_tables, engine
+from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog, modules, channels, module_types
+from routers.module_types import seed_builtin_types
+from sqlmodel import Session
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    with Session(engine) as session:
+        seed_builtin_types(session)
     os.makedirs("../uploads", exist_ok=True)
     yield
 
@@ -40,6 +44,7 @@ app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(changelog.router, prefix="/api/changelog", tags=["changelog"])
 app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 app.include_router(channels.router, prefix="/api/channels", tags=["channels"])
+app.include_router(module_types.router, prefix="/api/module_types", tags=["module_types"])
 
 
 @app.get("/api/health")

@@ -91,6 +91,13 @@ export const getChangelog = (params) =>
 export const createChangelogEntry = (data) =>
   http.post('/changelog', data).then((r) => r.data)
 
+// --- Module Types ---
+export const getModuleTypes = () => http.get('/module_types').then((r) => r.data)
+export const createModuleType = (data) => http.post('/module_types', data).then((r) => r.data)
+export const updateModuleType = (id, data) => http.put(`/module_types/${id}`, data).then((r) => r.data)
+export const deleteModuleType = (id) => http.delete(`/module_types/${id}`).then((r) => r.data)
+export const getModuleTypeUsage = (key) => http.get(`/module_types/${key}/usage`).then((r) => r.data)
+
 // --- Modules ---
 export const getPanelModules = (panelId) =>
   http.get(`/panels/${panelId}/modules`).then((r) => r.data)

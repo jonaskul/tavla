@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
-from models import Circuit, Module, ModuleType, Panel, Property
+from models import Circuit, Module, ModuleTypeDefinition, Panel, Property
 from schemas import (
     CircuitCreateNested,
     CircuitRead,
@@ -142,10 +142,17 @@ def create_module_for_panel(
     for m in existing:
         if data.position < m.position + m.width and data.position + data.width > m.position:
             raise HTTPException(status_code=409, detail="Module overlaps with existing module")
+    mtd = session.exec(
+        select(ModuleTypeDefinition).where(ModuleTypeDefinition.key == data.type)
+    ).first()
+    if not mtd:
+        raise HTTPException(status_code=422, detail=f"Unknown module type: {data.type}")
     if data.is_vacant and data.circuit_id:
         raise HTTPException(status_code=400, detail="Vacant module cannot be assigned to a circuit")
-    if data.type == ModuleType.main_switch and data.circuit_id:
-        raise HTTPException(status_code=400, detail="Main switch cannot be assigned to a circuit")
+    if not mtd.can_have_circuit and data.circuit_id:
+        raise HTTPException(
+            status_code=400, detail=f"Module type '{data.type}' cannot be assigned to a circuit"
+        )
     module = Module(panel_id=panel_id, **data.model_dump())
     session.add(module)
     session.commit()

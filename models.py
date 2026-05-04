@@ -77,15 +77,31 @@ class Panel(SQLModel, table=True):
     circuits: List["Circuit"] = Relationship(back_populates="panel")
 
 
+# --- ModuleTypeDefinition ---
+
+class ModuleTypeDefinition(SQLModel, table=True):
+    __tablename__ = "moduletypedefinition"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    key: str = Field(unique=True, index=True)
+    name_no: str
+    color: str
+    abbreviation: str
+    can_have_circuit: bool = Field(default=False)
+    can_have_ampere: bool = Field(default=False)
+    is_builtin: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 # --- Module ---
 
 class Module(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     panel_id: int = Field(foreign_key="panel.id")
-    row: int                        # 0-indexed row on panel
-    position: int                   # 0-indexed start position on row
-    width: int = Field(default=1)   # width in module units
-    type: ModuleType
+    row: int
+    position: int
+    width: int = Field(default=1)
+    type: str
     label: Optional[str] = None
     ampere: Optional[int] = None
     has_rcd: bool = Field(default=False)
