@@ -6,7 +6,25 @@ import { t } from '../i18n/no'
 const ACCEPT_MIMES = new Set(['image/jpeg', 'image/png', 'application/pdf'])
 const MAX_SIZE = 20 * 1024 * 1024
 
-export default function FileUpload({ connectionPointId, onUploaded }) {
+/**
+ * Generic file upload widget.
+ *
+ * Legacy (CP) usage:  <FileUpload connectionPointId={id} />
+ * Generic usage:      <FileUpload queryKey={[...]} fetchFiles={fn} uploadFn={fn} />
+ */
+export default function FileUpload({
+  // Legacy convenience props
+  connectionPointId,
+  // Generic overrides
+  queryKey: queryKeyProp,
+  fetchFiles: fetchFilesProp,
+  uploadFn: uploadFnProp,
+  onUploaded,
+}) {
+  const resolvedQueryKey = queryKeyProp ?? ['files', connectionPointId]
+  const resolvedFetchFiles = fetchFilesProp ?? (() => getConnectionPointFiles(connectionPointId))
+  const resolvedUploadFn = uploadFnProp ?? ((f) => uploadFile(connectionPointId, f))
+
   const inputRef = useRef(null)
   const [dragOver, setDragOver] = useState(false)
   const [uploadError, setUploadError] = useState(null)
@@ -15,14 +33,14 @@ export default function FileUpload({ connectionPointId, onUploaded }) {
   const qc = useQueryClient()
 
   const { data: files = [] } = useQuery({
-    queryKey: ['files', connectionPointId],
-    queryFn: () => getConnectionPointFiles(connectionPointId),
+    queryKey: resolvedQueryKey,
+    queryFn: resolvedFetchFiles,
   })
 
   const uploadMutation = useMutation({
-    mutationFn: (file) => uploadFile(connectionPointId, file),
+    mutationFn: resolvedUploadFn,
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['files', connectionPointId] })
+      qc.invalidateQueries({ queryKey: resolvedQueryKey })
       setUploadError(null)
       onUploaded?.(data)
     },
@@ -34,7 +52,7 @@ export default function FileUpload({ connectionPointId, onUploaded }) {
   const deleteMutation = useMutation({
     mutationFn: (id) => deleteFile(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['files', connectionPointId] })
+      qc.invalidateQueries({ queryKey: resolvedQueryKey })
       setConfirmDeleteId(null)
     },
   })

@@ -89,6 +89,12 @@ async def _handle_upload(
     equipment_id: Optional[int],
     session: Session,
 ) -> File:
+    if connection_point_id is not None and equipment_id is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Specify either connection_point_id or equipment_id, not both",
+        )
+
     content = await file.read()
 
     if len(content) > MAX_FILE_SIZE:
@@ -102,8 +108,12 @@ async def _handle_upload(
     ext = os.path.splitext(safe_name)[1]
     unique_name = f"{uuid.uuid4()}{ext}"
 
-    subdir = str(connection_point_id) if connection_point_id is not None else "misc"
-    dest_dir = os.path.join(UPLOAD_DIR, subdir)
+    if connection_point_id is not None:
+        dest_dir = os.path.join(UPLOAD_DIR, str(connection_point_id))
+    elif equipment_id is not None:
+        dest_dir = os.path.join(UPLOAD_DIR, "equipment", str(equipment_id))
+    else:
+        dest_dir = os.path.join(UPLOAD_DIR, "misc")
     os.makedirs(dest_dir, exist_ok=True)
     local_path = os.path.join(dest_dir, unique_name)
 

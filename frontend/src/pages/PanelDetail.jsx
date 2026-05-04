@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPanel, updatePanel, deletePanel, getCircuits, createCircuit, updateCircuit, deleteCircuit } from '../api/client'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getPanel, updatePanel, deletePanel, getCircuits, createCircuit, updateCircuit, deleteCircuit, getEquipment } from '../api/client'
 import { t } from '../i18n/no'
 import PanelCanvas from '../components/PanelMockup/PanelCanvas'
 import PanelDialog from '../components/PanelDialog'
@@ -18,6 +18,7 @@ export default function PanelDetail() {
   const [panelDeleteConfirm, setPanelDeleteConfirm] = useState({ open: false, error: null })
   const [circuitDialog, setCircuitDialog] = useState({ open: false, item: null })
   const [circuitDeleteConfirm, setCircuitDeleteConfirm] = useState({ open: false, item: null, error: null })
+  const [filterEquipment, setFilterEquipment] = useState(false)
 
   const { data: panel, isLoading, isError } = useQuery({
     queryKey: ['panel', panelId],
@@ -30,6 +31,24 @@ export default function PanelDetail() {
     queryFn: () => getCircuits(panelId),
     enabled: !!panel,
   })
+
+  // Fetch equipment counts for all circuits in parallel
+  const equipmentQueries = useQueries({
+    queries: circuits.map((c) => ({
+      queryKey: ['equipment', c.id],
+      queryFn: () => getEquipment(c.id),
+      enabled: circuits.length > 0,
+    })),
+  })
+
+  // Map circuit.id → equipment count
+  const equipmentCountMap = Object.fromEntries(
+    circuits.map((c, i) => [c.id, equipmentQueries[i]?.data?.length ?? 0])
+  )
+
+  const visibleCircuits = filterEquipment
+    ? circuits.filter((c) => equipmentCountMap[c.id] > 0)
+    : circuits
 
   const updatePanelMutation = useMutation({
     mutationFn: (data) => updatePanel(panelId, data),
@@ -148,7 +167,22 @@ export default function PanelDetail() {
 
       {/* Circuits section */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-800">{t.nav.circuit}</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-gray-800">{t.nav.circuit}</h2>
+          {circuits.some((c) => equipmentCountMap[c.id] > 0) && (
+            <button
+              onClick={() => setFilterEquipment((f) => !f)}
+              className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                filterEquipment
+                  ? 'bg-amber-100 border-amber-400 text-amber-800'
+                  : 'border-gray-300 text-gray-500 hover:border-amber-400 hover:text-amber-700'
+              }`}
+              title={filterEquipment ? 'Vis alle kurser' : 'Vis kun kurser med utstyr'}
+            >
+              {t.equipment.title}
+            </button>
+          )}
+        </div>
         <button
           onClick={() => setCircuitDialog({ open: true, item: null })}
           className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700"
@@ -159,42 +193,58 @@ export default function PanelDetail() {
 
       {loadingCircuits ? (
         <p className="text-gray-500 text-sm">{t.common.loading}</p>
-      ) : circuits.length === 0 ? (
-        <p className="text-gray-500 text-sm">{t.circuit.noCircuits}</p>
+      ) : visibleCircuits.length === 0 ? (
+        <p className="text-gray-500 text-sm">
+          {filterEquipment ? 'Ingen kurser med fastmontert utstyr.' : t.circuit.noCircuits}
+        </p>
       ) : (
         <ul className="space-y-2">
-          {circuits.map((circuit) => (
-            <li
-              key={circuit.id}
-              className="bg-white border border-gray-200 rounded-lg px-5 py-3 shadow-sm flex items-center justify-between gap-3"
-            >
-              <div className="min-w-0">
-                <Link
-                  to={`/kurs/${circuit.id}`}
-                  className="font-medium text-blue-700 hover:underline"
-                >
-                  {circuit.designation} — {circuit.name}
-                </Link>
-                {circuit.room && (
-                  <p className="text-sm text-gray-500 mt-0.5">{circuit.room}</p>
-                )}
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => setCircuitDialog({ open: true, item: circuit })}
-                  className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  {t.common.edit}
-                </button>
-                <button
-                  onClick={() => setCircuitDeleteConfirm({ open: true, item: circuit, error: null })}
-                  className="px-3 py-1 text-xs text-white bg-red-600 rounded-md hover:bg-red-700"
-                >
-                  {t.common.delete}
-                </button>
-              </div>
-            </li>
-          ))}
+          {visibleCircuits.map((circuit) => {
+            const eqCount = equipmentCountMap[circuit.id] ?? 0
+            return (
+              <li
+                key={circuit.id}
+                className="bg-white border border-gray-200 rounded-lg px-5 py-3 shadow-sm flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0 flex items-center gap-2">
+                  <div>
+                    <Link
+                      to={`/kurs/${circuit.id}`}
+                      className="font-medium text-blue-700 hover:underline"
+                    >
+                      {circuit.designation} — {circuit.name}
+                    </Link>
+                    {circuit.room && (
+                      <p className="text-sm text-gray-500 mt-0.5">{circuit.room}</p>
+                    )}
+                  </div>
+                  {eqCount > 0 && (
+                    <button
+                      onClick={() => setFilterEquipment((f) => !f)}
+                      className="shrink-0 text-xs bg-amber-100 text-amber-800 border border-amber-300 rounded-full px-2 py-0.5 hover:bg-amber-200"
+                      title={filterEquipment ? 'Vis alle kurser' : 'Filtrer på utstyr'}
+                    >
+                      {eqCount} {t.equipment.equipmentCount}
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => setCircuitDialog({ open: true, item: circuit })}
+                    className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    {t.common.edit}
+                  </button>
+                  <button
+                    onClick={() => setCircuitDeleteConfirm({ open: true, item: circuit, error: null })}
+                    className="px-3 py-1 text-xs text-white bg-red-600 rounded-md hover:bg-red-700"
+                  >
+                    {t.common.delete}
+                  </button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
 

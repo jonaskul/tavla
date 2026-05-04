@@ -110,3 +110,31 @@ def file_factory(client, connection_point_factory):
             files={"file": ("test.jpg", fake_image, "image/jpeg")},
         ).json()
     return make
+
+
+@pytest.fixture
+def equipment_factory(client, circuit_factory):
+    def make(circuit_id=None, eq_type="floor_heating", brand="Nexans"):
+        if circuit_id is None:
+            circuit = circuit_factory()
+            circuit_id = circuit["id"]
+        return client.post(
+            f"/api/circuits/{circuit_id}/equipment",
+            json={"type": eq_type, "brand": brand, "watt": 1000},
+        ).json()
+    return make
+
+
+@pytest.fixture
+def equipment_file_factory(client, equipment_factory):
+    import io
+    def make(equipment_id=None):
+        if equipment_id is None:
+            eq = equipment_factory()
+            equipment_id = eq["id"]
+        fake_image = io.BytesIO(b"fake jpeg content")
+        return client.post(
+            f"/api/equipment/{equipment_id}/files",
+            files={"file": ("photo.jpg", fake_image, "image/jpeg")},
+        ).json()
+    return make

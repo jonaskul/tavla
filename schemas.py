@@ -231,6 +231,15 @@ class EquipmentUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class EquipmentCreateNested(BaseModel):
+    """Body schema for POST /api/circuits/{id}/equipment (circuit_id from URL)."""
+    type: EquipmentType
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    watt: Optional[int] = None
+    notes: Optional[str] = None
+
+
 # --- File ---
 
 class FileRead(BaseModel):

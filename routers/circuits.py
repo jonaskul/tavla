@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
-from models import ChangeLog, Circuit, ConnectionPoint, File, Panel
+from models import ChangeLog, Circuit, ConnectionPoint, Equipment, File, Panel
 from schemas import (
     ChangeLogRead,
     CircuitCreate,
@@ -12,6 +12,8 @@ from schemas import (
     CircuitUpdate,
     ConnectionPointCreateNested,
     ConnectionPointRead,
+    EquipmentCreateNested,
+    EquipmentRead,
 )
 
 router = APIRouter()
@@ -137,6 +139,53 @@ def create_connection_point_for_circuit(
     session.commit()
 
     return cp
+
+
+# --- Nested: equipment under circuit ---
+
+EQUIPMENT_TYPE_LABELS = {
+    "floor_heating": "Varmekabler",
+    "ev_charger": "Elbillader",
+    "heat_pump": "Varmepumpe",
+    "boiler": "Varmtvannsbereder",
+    "other": "Annet",
+}
+
+
+@router.get("/{circuit_id}/equipment", response_model=List[EquipmentRead])
+def list_equipment_for_circuit(
+    circuit_id: int, session: Session = Depends(get_session)
+):
+    if not session.get(Circuit, circuit_id):
+        raise HTTPException(status_code=404, detail="Circuit not found")
+    return session.exec(
+        select(Equipment).where(Equipment.circuit_id == circuit_id)
+    ).all()
+
+
+@router.post("/{circuit_id}/equipment", response_model=EquipmentRead)
+def create_equipment_for_circuit(
+    circuit_id: int,
+    data: EquipmentCreateNested,
+    session: Session = Depends(get_session),
+):
+    circuit = session.get(Circuit, circuit_id)
+    if not circuit:
+        raise HTTPException(status_code=404, detail="Circuit not found")
+    item = Equipment(circuit_id=circuit_id, **data.model_dump())
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+
+    type_val = item.type.value if hasattr(item.type, "value") else str(item.type)
+    type_label = EQUIPMENT_TYPE_LABELS.get(type_val, type_val)
+    brand_model = " ".join(filter(None, [item.brand, item.model]))
+    desc = f"Utstyr opprettet: {type_label}"
+    if brand_model:
+        desc += f" – {brand_model}"
+    session.add(ChangeLog(circuit_id=circuit_id, description=desc))
+    session.commit()
+    return item
 
 
 # --- Nested: changelog under circuit ---

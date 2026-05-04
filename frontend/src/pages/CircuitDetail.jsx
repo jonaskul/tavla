@@ -17,6 +17,7 @@ import ConnectionPointDialog from '../components/ConnectionPointDialog'
 import FileUpload from '../components/FileUpload'
 import ChangeLog from '../components/ChangeLog'
 import ConfirmDialog from '../components/ConfirmDialog'
+import EquipmentList from '../components/EquipmentList'
 
 export default function CircuitDetail() {
   const { id } = useParams()
@@ -259,6 +260,11 @@ export default function CircuitDetail() {
             ))}
           </ul>
         )}
+      </div>
+
+      {/* Equipment */}
+      <div className="mb-8">
+        <EquipmentList circuitId={circuitId} />
       </div>
 
       {/* Changelog */}

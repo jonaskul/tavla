@@ -59,7 +59,22 @@ export const getFileContentUrl = (id) => `/api/files/${id}/content`
 
 // --- Equipment ---
 export const getEquipment = (circuitId) =>
-  http.get('/equipment', { params: { circuit_id: circuitId } }).then((r) => r.data)
+  http.get(`/circuits/${circuitId}/equipment`).then((r) => r.data)
+export const createEquipment = (circuitId, data) =>
+  http.post(`/circuits/${circuitId}/equipment`, data).then((r) => r.data)
+export const updateEquipment = (id, data) =>
+  http.put(`/equipment/${id}`, data).then((r) => r.data)
+export const deleteEquipment = (id) =>
+  http.delete(`/equipment/${id}`).then((r) => r.data)
+export const getEquipmentFiles = (equipmentId) =>
+  http.get(`/equipment/${equipmentId}/files`).then((r) => r.data)
+export const uploadEquipmentFile = (equipmentId, file) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return http.post(`/equipment/${equipmentId}/files`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data)
+}
 
 // --- Changelog ---
 export const getChangelog = (params) =>
