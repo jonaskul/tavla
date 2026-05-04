@@ -41,7 +41,7 @@ export const t = {
     modulesPerRow: "Moduler per skinne",
     notes: "Kommentar",
     configure: "Konfigurer skap",
-    mockup: "Skemontasje",
+    mockup: "Skapoversikt",
     rail: "Skinne",
     emptySlots: "ledige",
     addModule: "Legg til modul",
