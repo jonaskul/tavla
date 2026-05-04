@@ -82,6 +82,8 @@ export const t = {
     title: "Kurs",
     add: "Legg til kurs",
     edit: "Rediger kurs",
+    editBtn: "Endre kurs",
+    deleteBtn: "Fjern kurs",
     designation: "Kursbetegnelse",
     name: "Navn",
     room: "Rom",

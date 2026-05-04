@@ -150,13 +150,13 @@ export default function CircuitDetail() {
             onClick={() => setCircuitDialog(true)}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
           >
-            {t.common.edit}
+            {t.circuit.editBtn}
           </button>
           <button
             onClick={() => setCircuitDeleteConfirm({ open: true, error: null })}
             className="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
           >
-            {t.common.delete}
+            {t.circuit.deleteBtn}
           </button>
         </div>
       </div>
@@ -298,6 +298,7 @@ export default function CircuitDetail() {
         open={cpDeleteConfirm.open}
         message={t.common.confirmDelete}
         error={cpDeleteConfirm.error}
+        errorTestId="delete-cp-error"
         onConfirm={() => deleteCpMutation.mutate(cpDeleteConfirm.item.id)}
         onClose={() => setCpDeleteConfirm({ open: false, item: null, error: null })}
       />
