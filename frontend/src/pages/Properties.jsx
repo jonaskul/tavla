@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getProperties, createProperty, deleteProperty } from '../api/client'
+import { getProperties, createProperty, updateProperty, deleteProperty } from '../api/client'
 import { t } from '../i18n/no'
-
-const emptyForm = { name: '', address: '' }
+import PropertyDialog from '../components/PropertyDialog'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function Properties() {
   const queryClient = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState(emptyForm)
-  const [errors, setErrors] = useState({})
+  const [dialog, setDialog] = useState({ open: false, item: null })
+  const [confirm, setConfirm] = useState({ open: false, item: null, error: null })
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
@@ -21,33 +20,38 @@ export default function Properties() {
     mutationFn: createProperty,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] })
-      setShowForm(false)
-      setForm(emptyForm)
-      setErrors({})
+      setDialog({ open: false, item: null })
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => updateProperty(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] })
+      setDialog({ open: false, item: null })
     },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: deleteProperty,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['properties'] }),
+    mutationFn: (id) => deleteProperty(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] })
+      setConfirm({ open: false, item: null, error: null })
+    },
+    onError: (err) => {
+      const status = err.response?.status
+      setConfirm((c) => ({
+        ...c,
+        error: status === 409 ? t.property.cannotDeleteHasPanels : t.property.deleteError,
+      }))
+    },
   })
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const newErrors = {}
-    if (!form.name.trim()) newErrors.name = 'Navn er påkrevd'
-    if (!form.address.trim()) newErrors.address = 'Adresse er påkrevd'
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
-    }
-    setErrors({})
-    createMutation.mutate(form)
-  }
-
-  const handleDelete = (prop) => {
-    if (window.confirm(t.common.confirmDelete)) {
-      deleteMutation.mutate(prop.id)
+  const handleSave = (payload) => {
+    if (dialog.item) {
+      updateMutation.mutate({ id: dialog.item.id, data: payload })
+    } else {
+      createMutation.mutate(payload)
     }
   }
 
@@ -56,70 +60,12 @@ export default function Properties() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t.property.title}</h1>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => setDialog({ open: true, item: null })}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
         >
           {t.property.add}
         </button>
       </div>
-
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="bg-white border border-gray-200 rounded-lg p-5 mb-6 shadow-sm"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.property.name}
-              </label>
-              <input
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                autoFocus
-              />
-              {errors.name && (
-                <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.property.address}
-              </label>
-              <input
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={form.address}
-                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              />
-              {errors.address && (
-                <p className="text-red-500 text-xs mt-1">{errors.address}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {t.common.save}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false)
-                setForm(emptyForm)
-                setErrors({})
-              }}
-              className="border border-gray-300 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition-colors"
-            >
-              {t.common.cancel}
-            </button>
-          </div>
-        </form>
-      )}
 
       {isLoading ? (
         <p className="text-gray-500 text-sm">{t.common.loading}</p>
@@ -141,16 +87,39 @@ export default function Properties() {
                 </Link>
                 <p className="text-sm text-gray-500 mt-0.5">{prop.address}</p>
               </div>
-              <button
-                onClick={() => handleDelete(prop)}
-                className="text-sm text-red-500 hover:text-red-700 ml-4"
-              >
-                {t.common.delete}
-              </button>
+              <div className="flex gap-2 shrink-0 ml-4">
+                <button
+                  onClick={() => setDialog({ open: true, item: prop })}
+                  className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  {t.common.edit}
+                </button>
+                <button
+                  onClick={() => setConfirm({ open: true, item: prop, error: null })}
+                  className="px-3 py-1 text-xs text-white bg-red-600 rounded-md hover:bg-red-700"
+                >
+                  {t.common.delete}
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      <PropertyDialog
+        open={dialog.open}
+        initial={dialog.item}
+        onSave={handleSave}
+        onClose={() => setDialog({ open: false, item: null })}
+      />
+
+      <ConfirmDialog
+        open={confirm.open}
+        message={t.property.deleteConfirm}
+        error={confirm.error}
+        onConfirm={() => deleteMutation.mutate(confirm.item.id)}
+        onClose={() => setConfirm({ open: false, item: null, error: null })}
+      />
     </div>
   )
 }

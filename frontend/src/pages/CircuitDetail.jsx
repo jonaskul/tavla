@@ -1,27 +1,33 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCircuit,
   getPanel,
+  updateCircuit,
+  deleteCircuit,
   getConnectionPoints,
   createConnectionPoint,
   updateConnectionPoint,
   deleteConnectionPoint,
 } from '../api/client'
 import { t } from '../i18n/no'
+import CircuitDialog from '../components/CircuitDialog'
 import ConnectionPointDialog from '../components/ConnectionPointDialog'
 import FileUpload from '../components/FileUpload'
 import ChangeLog from '../components/ChangeLog'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function CircuitDetail() {
   const { id } = useParams()
   const circuitId = Number(id)
   const qc = useQueryClient()
+  const navigate = useNavigate()
 
+  const [circuitDialog, setCircuitDialog] = useState(false)
+  const [circuitDeleteConfirm, setCircuitDeleteConfirm] = useState({ open: false, error: null })
   const [cpDialog, setCpDialog] = useState({ open: false, item: null })
-  const [confirmDeleteCpId, setConfirmDeleteCpId] = useState(null)
-  const [deleteError, setDeleteError] = useState(null)
+  const [cpDeleteConfirm, setCpDeleteConfirm] = useState({ open: false, item: null, error: null })
   const [openFiles, setOpenFiles] = useState({})
 
   const { data: circuit, isLoading, isError } = useQuery({
@@ -40,6 +46,29 @@ export default function CircuitDetail() {
     queryKey: ['connection_points', circuitId],
     queryFn: () => getConnectionPoints(circuitId),
     enabled: !!circuit,
+  })
+
+  const updateCircuitMutation = useMutation({
+    mutationFn: (data) => updateCircuit(circuitId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['circuit', circuitId] })
+      setCircuitDialog(false)
+    },
+  })
+
+  const deleteCircuitMutation = useMutation({
+    mutationFn: () => deleteCircuit(circuitId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['circuits', circuit?.panel_id] })
+      navigate(`/skap/${circuit.panel_id}`)
+    },
+    onError: (err) => {
+      const status = err.response?.status
+      setCircuitDeleteConfirm((c) => ({
+        ...c,
+        error: status === 409 ? t.circuit.cannotDeleteHasConnectionPoints : t.circuit.deleteError,
+      }))
+    },
   })
 
   const createCpMutation = useMutation({
@@ -65,15 +94,14 @@ export default function CircuitDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['connection_points', circuitId] })
       qc.invalidateQueries({ queryKey: ['changelog', circuitId] })
-      setConfirmDeleteCpId(null)
-      setDeleteError(null)
+      setCpDeleteConfirm({ open: false, item: null, error: null })
     },
     onError: (err) => {
-      if (err.response?.status === 409) {
-        setDeleteError(t.connectionPoint.cannotDeleteHasFiles)
-      } else {
-        setDeleteError(t.connectionPoint.deleteError)
-      }
+      const status = err.response?.status
+      setCpDeleteConfirm((c) => ({
+        ...c,
+        error: status === 409 ? t.connectionPoint.cannotDeleteHasFiles : t.connectionPoint.deleteError,
+      }))
     },
   })
 
@@ -106,14 +134,30 @@ export default function CircuitDetail() {
         </Link>
       </div>
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {circuit.designation} — {circuit.name}
-        </h1>
-        {circuit.room && (
-          <p className="text-gray-500 text-sm mt-1">{circuit.room}</p>
-        )}
+      {/* Circuit header */}
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {circuit.designation} — {circuit.name}
+          </h1>
+          {circuit.room && (
+            <p className="text-gray-500 text-sm mt-1">{circuit.room}</p>
+          )}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setCircuitDialog(true)}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            {t.common.edit}
+          </button>
+          <button
+            onClick={() => setCircuitDeleteConfirm({ open: true, error: null })}
+            className="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+          >
+            {t.common.delete}
+          </button>
+        </div>
       </div>
 
       {/* Circuit details */}
@@ -183,19 +227,16 @@ export default function CircuitDetail() {
                       <p className="text-xs text-gray-400 italic mt-0.5">{cp.notes}</p>
                     )}
                   </div>
-                  <div className="flex gap-3 text-sm shrink-0 ml-4">
+                  <div className="flex gap-2 text-sm shrink-0 ml-4">
                     <button
                       onClick={() => setCpDialog({ open: true, item: cp })}
-                      className="text-blue-600 hover:underline"
+                      className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
                     >
                       {t.common.edit}
                     </button>
                     <button
-                      onClick={() => {
-                        setConfirmDeleteCpId(cp.id)
-                        setDeleteError(null)
-                      }}
-                      className="text-red-500 hover:underline"
+                      onClick={() => setCpDeleteConfirm({ open: true, item: cp, error: null })}
+                      className="px-3 py-1 text-xs text-white bg-red-600 rounded-md hover:bg-red-700"
                     >
                       {t.common.delete}
                     </button>
@@ -223,7 +264,23 @@ export default function CircuitDetail() {
       {/* Changelog */}
       <ChangeLog circuitId={circuitId} />
 
-      {/* Connection Point dialog */}
+      {/* Circuit dialogs */}
+      <CircuitDialog
+        open={circuitDialog}
+        initial={circuit}
+        onSave={(payload) => updateCircuitMutation.mutate(payload)}
+        onClose={() => setCircuitDialog(false)}
+      />
+
+      <ConfirmDialog
+        open={circuitDeleteConfirm.open}
+        message={t.circuit.deleteConfirm}
+        error={circuitDeleteConfirm.error}
+        onConfirm={() => deleteCircuitMutation.mutate()}
+        onClose={() => setCircuitDeleteConfirm({ open: false, error: null })}
+      />
+
+      {/* Connection Point dialogs */}
       <ConnectionPointDialog
         open={cpDialog.open}
         initial={cpDialog.item}
@@ -231,39 +288,13 @@ export default function CircuitDetail() {
         onClose={() => setCpDialog({ open: false, item: null })}
       />
 
-      {/* Delete CP confirmation */}
-      {confirmDeleteCpId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            {deleteError ? (
-              <p className="text-red-600 text-sm mb-4" data-testid="delete-cp-error">
-                {deleteError}
-              </p>
-            ) : (
-              <p className="text-sm text-gray-700 mb-4">{t.common.confirmDelete}</p>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setConfirmDeleteCpId(null)
-                  setDeleteError(null)
-                }}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                {t.common.cancel}
-              </button>
-              {!deleteError && (
-                <button
-                  onClick={() => deleteCpMutation.mutate(confirmDeleteCpId)}
-                  className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
-                >
-                  {t.common.delete}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={cpDeleteConfirm.open}
+        message={t.common.confirmDelete}
+        error={cpDeleteConfirm.error}
+        onConfirm={() => deleteCpMutation.mutate(cpDeleteConfirm.item.id)}
+        onClose={() => setCpDeleteConfirm({ open: false, item: null, error: null })}
+      />
     </div>
   )
 }

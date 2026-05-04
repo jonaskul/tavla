@@ -15,16 +15,23 @@ export const t = {
   property: {
     title: "Eiendommer",
     add: "Legg til eiendom",
+    edit: "Rediger eiendom",
     name: "Navn",
     address: "Adresse",
     panels: "Sikringsskap",
     noProperties: "Ingen eiendommer registrert",
+    nameRequired: "Navn er påkrevd",
+    addressRequired: "Adresse er påkrevd",
+    deleteConfirm: "Er du sikker på at du vil slette eiendommen? Dette kan ikke angres.",
+    cannotDeleteHasPanels: "Kan ikke slette eiendom som har sikringsskap. Slett skapene først.",
+    deleteError: "Kunne ikke slette eiendommen.",
   },
 
   // Panel
   panel: {
     title: "Sikringsskap",
     add: "Legg til skap",
+    edit: "Rediger skap",
     name: "Navn",
     location: "Plassering",
     rows: "Antall skinnerader",
@@ -37,6 +44,11 @@ export const t = {
     addModule: "Legg til modul",
     editModule: "Rediger modul",
     deleteModule: "Slett modul",
+    nameRequired: "Navn er påkrevd",
+    locationRequired: "Plassering er påkrevd",
+    deleteConfirm: "Er du sikker på at du vil slette sikringsskapet? Dette kan ikke angres.",
+    cannotDeleteHasCircuits: "Kan ikke slette sikringsskap som har kurser. Slett kursene først.",
+    deleteError: "Kunne ikke slette sikringsskapet.",
   },
 
   module: {
@@ -79,8 +91,9 @@ export const t = {
     noCircuits: "Ingen kurser registrert enda.",
     designationRequired: "Kursbetegnelse er påkrevd",
     nameRequired: "Navn er påkrevd",
+    deleteConfirm: "Er du sikker på at du vil slette kursen? Dette kan ikke angres.",
     cannotDeleteHasConnectionPoints: "Kan ikke slette kurs som har koblingspunkter. Slett koblingspunktene først.",
-    deleteError: "Kunne ikke slette kurs.",
+    deleteError: "Kunne ikke slette kursen.",
   },
 
   // Connection point
