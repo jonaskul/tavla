@@ -13,7 +13,13 @@ class ModuleType(str, Enum):
     shelly = "shelly"
     dynalite = "dynalite"
     surge_protection = "surge_protection"
+    main_switch = "main_switch"
     other = "other"
+
+
+class ChannelType(str, Enum):
+    relay = "relay"
+    dimmer = "dimmer"
 
 
 class CableType(str, Enum):
@@ -84,6 +90,7 @@ class Module(SQLModel, table=True):
     ampere: Optional[int] = None
     has_rcd: bool = Field(default=False)
     circuit_id: Optional[int] = Field(default=None, foreign_key="circuit.id")
+    is_vacant: bool = Field(default=False)
 
     panel: Optional[Panel] = Relationship(back_populates="modules")
 
@@ -185,6 +192,8 @@ class Channel(SQLModel, table=True):
     load: Optional[str] = None
     circuit_id: Optional[int] = Field(default=None, foreign_key="circuit.id")
     notes: Optional[str] = None
+    channel_type: ChannelType = Field(default=ChannelType.relay)
+    watt: Optional[int] = None
 
     equipment: Optional[Equipment] = Relationship(back_populates="channels")
     circuit: Optional[Circuit] = Relationship(back_populates="channels")

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { t } from '../../i18n/no'
 
-const AMPERE_TYPES  = new Set(['breaker', 'rcd', 'rcd_breaker'])
+const AMPERE_TYPES  = new Set(['breaker', 'rcd', 'rcd_breaker', 'main_switch'])
 const CIRCUIT_TYPES = new Set(['breaker', 'rcd_breaker'])
 
 const ALL_TYPES = [
-  'breaker', 'rcd', 'rcd_breaker', 'shelly', 'dynalite', 'surge_protection', 'other',
+  'breaker', 'rcd', 'rcd_breaker', 'shelly', 'dynalite', 'surge_protection', 'main_switch', 'other',
 ]
 
 export default function ModuleDialog({
@@ -22,6 +22,7 @@ export default function ModuleDialog({
     label:      existing?.label      ?? '',
     circuit_id: existing?.circuit_id ?? '',
     has_rcd:    existing?.has_rcd    ?? false,
+    is_vacant:  existing?.is_vacant  ?? false,
   })
   const [errors, setErrors] = useState({})
 
@@ -36,11 +37,15 @@ export default function ModuleDialog({
   if (!open) return null
 
   const showAmpere  = AMPERE_TYPES.has(form.type)
-  const showCircuit = CIRCUIT_TYPES.has(form.type)
+  const showCircuit = CIRCUIT_TYPES.has(form.type) && !form.is_vacant
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
     setErrors((er) => ({ ...er, [key]: undefined }))
+  }
+
+  const setCheck = (key) => (e) => {
+    setForm((f) => ({ ...f, [key]: e.target.checked }))
   }
 
   const handleSave = () => {
@@ -54,6 +59,7 @@ export default function ModuleDialog({
       ampere:     showAmpere && form.ampere !== '' ? Number(form.ampere) : null,
       has_rcd:    form.has_rcd,
       circuit_id: showCircuit && form.circuit_id !== '' ? Number(form.circuit_id) : null,
+      is_vacant:  form.is_vacant,
     })
   }
 
@@ -89,7 +95,7 @@ export default function ModuleDialog({
             )}
           </div>
 
-          {/* Ampere — breaker + rcd + rcd_breaker */}
+          {/* Ampere — breaker + rcd + rcd_breaker + main_switch */}
           {showAmpere && (
             <div>
               <label htmlFor="mod-ampere" className="block text-sm font-medium text-gray-700 mb-1">
@@ -124,7 +130,7 @@ export default function ModuleDialog({
             />
           </div>
 
-          {/* Circuit — breaker + rcd_breaker only */}
+          {/* Circuit — breaker + rcd_breaker only, hidden when vacant */}
           {showCircuit && (
             <div>
               <label htmlFor="mod-circuit" className="block text-sm font-medium text-gray-700 mb-1">
@@ -146,6 +152,21 @@ export default function ModuleDialog({
               </select>
             </div>
           )}
+
+          {/* Vacant */}
+          <div className="flex items-center gap-2">
+            <input
+              id="mod-vacant"
+              data-testid="field-is-vacant"
+              type="checkbox"
+              checked={form.is_vacant}
+              onChange={setCheck('is_vacant')}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+            />
+            <label htmlFor="mod-vacant" className="text-sm text-gray-700">
+              {t.module.isVacant}
+            </label>
+          </div>
         </div>
 
         <div className="mt-6 flex items-center">

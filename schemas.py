@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Optional
 from datetime import datetime
 
-from models import CableType, ConnectionPointType, EquipmentType, ModuleType
+from models import CableType, ChannelType, ConnectionPointType, EquipmentType, ModuleType
 
 
 # --- Property ---
@@ -79,6 +79,7 @@ class ModuleRead(BaseModel):
     ampere: Optional[int] = None
     has_rcd: bool
     circuit_id: Optional[int] = None
+    is_vacant: bool = False
 
 
 class ModuleCreate(BaseModel):
@@ -91,6 +92,7 @@ class ModuleCreate(BaseModel):
     ampere: Optional[int] = None
     has_rcd: bool = False
     circuit_id: Optional[int] = None
+    is_vacant: bool = False
 
 
 class ModuleUpdate(BaseModel):
@@ -102,6 +104,7 @@ class ModuleUpdate(BaseModel):
     ampere: Optional[int] = None
     has_rcd: Optional[bool] = None
     circuit_id: Optional[int] = None
+    is_vacant: Optional[bool] = None
 
 
 class ModuleCreateNested(BaseModel):
@@ -114,6 +117,7 @@ class ModuleCreateNested(BaseModel):
     ampere: Optional[int] = None
     has_rcd: bool = False
     circuit_id: Optional[int] = None
+    is_vacant: bool = False
 
 
 # --- Circuit ---
@@ -253,6 +257,8 @@ class ChannelRead(BaseModel):
     load: Optional[str] = None
     circuit_id: Optional[int] = None
     notes: Optional[str] = None
+    channel_type: ChannelType = ChannelType.relay
+    watt: Optional[int] = None
 
 
 class ChannelCreateNested(BaseModel):
@@ -262,6 +268,8 @@ class ChannelCreateNested(BaseModel):
     load: Optional[str] = None
     circuit_id: Optional[int] = None
     notes: Optional[str] = None
+    channel_type: ChannelType = ChannelType.relay
+    watt: Optional[int] = None
 
 
 class ChannelUpdate(BaseModel):
@@ -269,6 +277,8 @@ class ChannelUpdate(BaseModel):
     load: Optional[str] = None
     circuit_id: Optional[int] = None
     notes: Optional[str] = None
+    channel_type: Optional[ChannelType] = None
+    watt: Optional[int] = None
 
 
 # --- File ---

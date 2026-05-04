@@ -46,10 +46,12 @@ export default function ChannelTable({ equipmentId, panelId }) {
   const startEdit = (ch) => {
     setEditingId(ch.id)
     setEditForm({
-      label: ch.label ?? '',
-      load: ch.load ?? '',
-      circuit_id: ch.circuit_id != null ? String(ch.circuit_id) : '',
-      notes: ch.notes ?? '',
+      label:        ch.label ?? '',
+      load:         ch.load ?? '',
+      circuit_id:   ch.circuit_id != null ? String(ch.circuit_id) : '',
+      notes:        ch.notes ?? '',
+      channel_type: ch.channel_type ?? 'relay',
+      watt:         ch.watt != null ? String(ch.watt) : '',
     })
   }
 
@@ -57,10 +59,12 @@ export default function ChannelTable({ equipmentId, panelId }) {
     updateMutation.mutate({
       id,
       data: {
-        label: editForm.label.trim() || null,
-        load: editForm.load.trim() || null,
-        circuit_id: editForm.circuit_id ? parseInt(editForm.circuit_id, 10) : null,
-        notes: editForm.notes.trim() || null,
+        label:        editForm.label.trim() || null,
+        load:         editForm.load.trim() || null,
+        circuit_id:   editForm.circuit_id ? parseInt(editForm.circuit_id, 10) : null,
+        notes:        editForm.notes.trim() || null,
+        channel_type: editForm.channel_type,
+        watt:         editForm.watt !== '' ? parseInt(editForm.watt, 10) : null,
       },
     })
   }
@@ -79,6 +83,8 @@ export default function ChannelTable({ equipmentId, panelId }) {
 
   const setEdit = (field) => (e) =>
     setEditForm((f) => ({ ...f, [field]: e.target.value }))
+
+  const totalWatt = channels.reduce((sum, ch) => sum + (ch.watt ?? 0), 0)
 
   return (
     <div className="border-t border-gray-100 pt-3 mt-1">
@@ -101,6 +107,8 @@ export default function ChannelTable({ equipmentId, panelId }) {
                 <th className="text-left pb-1.5 pr-3 font-medium min-w-[90px]">{t.channel.label}</th>
                 <th className="text-left pb-1.5 pr-3 font-medium min-w-[90px]">{t.channel.load}</th>
                 <th className="text-left pb-1.5 pr-3 font-medium min-w-[110px]">{t.channel.circuit}</th>
+                <th className="text-left pb-1.5 pr-3 font-medium min-w-[80px]">{t.channel.channelType}</th>
+                <th className="text-left pb-1.5 pr-3 font-medium w-14">{t.channel.wattCol}</th>
                 <th className="text-left pb-1.5 pr-3 font-medium min-w-[80px]">{t.channel.notes}</th>
                 <th className="w-20"></th>
               </tr>
@@ -153,6 +161,26 @@ export default function ChannelTable({ equipmentId, panelId }) {
                           </select>
                         </td>
                         <td className="py-1 pr-2">
+                          <select
+                            className="w-full border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            value={editForm.channel_type}
+                            onChange={setEdit('channel_type')}
+                          >
+                            <option value="relay">{t.channel.relay}</option>
+                            <option value="dimmer">{t.channel.dimmer}</option>
+                          </select>
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            value={editForm.watt}
+                            onChange={setEdit('watt')}
+                            onKeyDown={(e) => handleKeyDown(e, ch.id)}
+                          />
+                        </td>
+                        <td className="py-1 pr-2">
                           <input
                             className="w-full border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                             value={editForm.notes}
@@ -202,6 +230,12 @@ export default function ChannelTable({ equipmentId, panelId }) {
                             : <span className="text-gray-300 italic">{t.channel.noCircuit}</span>
                           }
                         </td>
+                        <td className="py-1.5 pr-3 text-gray-600">
+                          {ch.channel_type === 'dimmer' ? t.channel.dimmer : t.channel.relay}
+                        </td>
+                        <td className="py-1.5 pr-3 text-gray-600">
+                          {ch.watt != null ? `${ch.watt} W` : <span className="text-gray-300">—</span>}
+                        </td>
                         <td className="py-1.5 pr-3">
                           {ch.notes || <span className="text-gray-300">—</span>}
                         </td>
@@ -226,6 +260,12 @@ export default function ChannelTable({ equipmentId, panelId }) {
               })}
             </tbody>
           </table>
+
+          {totalWatt > 0 && (
+            <p className="text-xs text-gray-500 mt-2 text-right">
+              {t.channel.totalWatt}: <span className="font-medium">{totalWatt} W</span>
+            </p>
+          )}
         </div>
       )}
 

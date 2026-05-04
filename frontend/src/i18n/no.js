@@ -62,6 +62,7 @@ export const t = {
     width: "Bredde (moduler)",
     noCircuit: "Ingen kurs (kobles fritt)",
     typeRequired: "Type er påkrevd",
+    isVacant: "Merk som ledig",
   },
 
   // Module types
@@ -72,6 +73,7 @@ export const t = {
     shelly: "Shelly",
     dynalite: "Dynalite",
     surge_protection: "Overspenningsvern",
+    main_switch: "Hovedbryter (OV50)",
     other: "Annet",
   },
 
@@ -135,6 +137,11 @@ export const t = {
     noCircuit: "— ikke koblet —",
     noChannels: "Ingen kanaler registrert",
     channelCount: "Antall kanaler",
+    channelType: "Kanaltype",
+    relay: "Relé (av/på)",
+    dimmer: "Dimmer",
+    wattCol: "W",
+    totalWatt: "Total effekt",
     deleteConfirm: "Er du sikker på at du vil slette kanalen?",
     deleteError: "Kunne ikke slette kanalen.",
   },
