@@ -1,51 +1,51 @@
 #!/usr/bin/env bash
-# Kjøres inne i Tavla-containeren: bash /opt/tavla/update.sh
+# Run inside the Tavla container: bash /opt/tavla/update.sh
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
 info() { echo -e "${CYAN}==> $*${NC}"; }
 ok()   { echo -e "${GREEN}    OK: $*${NC}"; }
-die()  { echo -e "${RED}FEIL: $*${NC}" >&2; exit 1; }
+die()  { echo -e "${RED}ERROR: $*${NC}" >&2; exit 1; }
 
-[[ -d /opt/tavla/.git ]] || die "Finner ikke /opt/tavla/.git. Er dette riktig container?"
+[[ -d /opt/tavla/.git ]] || die "/opt/tavla/.git not found. Is this the right container?"
 
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║           Tavla — Oppdatering                        ║"
+echo "║           Tavla — Update                             ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
-info "Henter siste endringer fra GitHub..."
+info "Pulling latest changes from GitHub..."
 cd /opt/tavla
-git pull --ff-only || die "git pull feilet. Løs eventuelle konflikter manuelt."
-ok "Kode oppdatert."
+git pull --ff-only || die "git pull failed. Resolve any conflicts manually."
+ok "Code updated."
 
-info "Installerer Python-avhengigheter..."
+info "Installing Python dependencies..."
 /opt/tavla/venv/bin/pip install --quiet --upgrade pip
 /opt/tavla/venv/bin/pip install --quiet -r requirements.txt
-ok "Python-pakker oppdatert."
+ok "Python packages updated."
 
-info "Kjører databasemigrasjoner..."
+info "Running database migrations..."
 if [[ -f alembic.ini ]]; then
     /opt/tavla/venv/bin/alembic upgrade head
-    ok "Databasemigrasjoner kjørt."
+    ok "Database migrations applied."
 else
-    echo "    (ingen alembic.ini — hopper over migrasjoner)"
+    echo "    (no alembic.ini — skipping migrations)"
 fi
 
-info "Bygger frontend..."
+info "Building frontend..."
 cd /opt/tavla/frontend
 npm install --silent
 npm run build --silent
-ok "Frontend bygget."
+ok "Frontend built."
 
-info "Starter tjenester på nytt..."
+info "Restarting services..."
 systemctl restart tavla
 systemctl reload nginx
-ok "Tjenester restartet."
+ok "Services restarted."
 
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║              Oppdatering fullført!                   ║"
+echo "║              Update complete!                        ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
