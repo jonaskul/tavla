@@ -105,6 +105,7 @@ class Circuit(SQLModel, table=True):
     connection_points: List["ConnectionPoint"] = Relationship(back_populates="circuit")
     equipment_items: List["Equipment"] = Relationship(back_populates="circuit")
     changelog: List["ChangeLog"] = Relationship(back_populates="circuit")
+    channels: List["Channel"] = Relationship(back_populates="circuit")
 
 
 # --- ConnectionPoint ---
@@ -137,6 +138,7 @@ class Equipment(SQLModel, table=True):
     circuit: Optional[Circuit] = Relationship(back_populates="equipment_items")
     files: List["File"] = Relationship(back_populates="equipment")
     changelog: List["ChangeLog"] = Relationship(back_populates="equipment")
+    channels: List["Channel"] = Relationship(back_populates="equipment")
 
 
 # --- File ---
@@ -169,3 +171,18 @@ class ChangeLog(SQLModel, table=True):
     circuit: Optional[Circuit] = Relationship(back_populates="changelog")
     connection_point: Optional[ConnectionPoint] = Relationship(back_populates="changelog")
     equipment: Optional[Equipment] = Relationship(back_populates="changelog")
+
+
+# --- Channel ---
+
+class Channel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    equipment_id: int = Field(foreign_key="equipment.id")
+    number: int
+    label: Optional[str] = None
+    load: Optional[str] = None
+    circuit_id: Optional[int] = Field(default=None, foreign_key="circuit.id")
+    notes: Optional[str] = None
+
+    equipment: Optional[Equipment] = Relationship(back_populates="channels")
+    circuit: Optional[Circuit] = Relationship(back_populates="channels")

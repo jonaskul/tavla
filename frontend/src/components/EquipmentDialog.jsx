@@ -3,7 +3,9 @@ import { t } from '../i18n/no'
 
 const EQUIPMENT_TYPES = Object.keys(t.equipment.types)
 
-const empty = { type: '', brand: '', model: '', watt: '', notes: '' }
+const CHANNEL_DEFAULTS = { dynalite: '12', shelly: '4' }
+
+const empty = { type: '', brand: '', model: '', watt: '', notes: '', channel_count: '' }
 
 export default function EquipmentDialog({ open, initial, onSave, onClose }) {
   const [form, setForm] = useState(empty)
@@ -19,6 +21,7 @@ export default function EquipmentDialog({ open, initial, onSave, onClose }) {
               model: initial.model ?? '',
               watt: initial.watt != null ? String(initial.watt) : '',
               notes: initial.notes ?? '',
+              channel_count: '',
             }
           : empty
       )
@@ -34,20 +37,33 @@ export default function EquipmentDialog({ open, initial, onSave, onClose }) {
 
   if (!open) return null
 
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
+  const set = (field) => (e) => {
+    const value = e.target.value
+    setForm((f) => {
+      const next = { ...f, [field]: value }
+      if (field === 'type' && !initial) {
+        next.channel_count = CHANNEL_DEFAULTS[value] ?? ''
+      }
+      return next
+    })
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     const errs = {}
     if (!form.type) errs.type = t.equipment.typeRequired
     if (Object.keys(errs).length) { setErrors(errs); return }
-    onSave({
+    const payload = {
       type: form.type,
       brand: form.brand.trim() || null,
       model: form.model.trim() || null,
       watt: form.watt ? parseInt(form.watt, 10) : null,
       notes: form.notes.trim() || null,
-    })
+    }
+    if (!initial && form.channel_count) {
+      payload.channel_count = parseInt(form.channel_count, 10)
+    }
+    onSave(payload)
   }
 
   return (
@@ -123,6 +139,22 @@ export default function EquipmentDialog({ open, initial, onSave, onClose }) {
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {!initial && (form.type === 'dynalite' || form.type === 'shelly') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t.channel.channelCount}
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="64"
+                value={form.channel_count}
+                onChange={set('channel_count')}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button

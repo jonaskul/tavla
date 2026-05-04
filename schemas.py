@@ -221,6 +221,7 @@ class EquipmentCreate(BaseModel):
     model: Optional[str] = None
     watt: Optional[int] = None
     notes: Optional[str] = None
+    channel_count: Optional[int] = None
 
 
 class EquipmentUpdate(BaseModel):
@@ -237,6 +238,36 @@ class EquipmentCreateNested(BaseModel):
     brand: Optional[str] = None
     model: Optional[str] = None
     watt: Optional[int] = None
+    notes: Optional[str] = None
+    channel_count: Optional[int] = None
+
+
+# --- Channel ---
+
+class ChannelRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    equipment_id: int
+    number: int
+    label: Optional[str] = None
+    load: Optional[str] = None
+    circuit_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class ChannelCreateNested(BaseModel):
+    """Body schema for POST /api/equipment/{id}/channels (equipment_id from URL)."""
+    number: int
+    label: Optional[str] = None
+    load: Optional[str] = None
+    circuit_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class ChannelUpdate(BaseModel):
+    label: Optional[str] = None
+    load: Optional[str] = None
+    circuit_id: Optional[int] = None
     notes: Optional[str] = None
 
 

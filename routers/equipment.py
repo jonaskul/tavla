@@ -8,8 +8,10 @@ from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
-from models import ChangeLog, Circuit, Equipment, File
+from models import ChangeLog, Channel, Circuit, Equipment, File
 from schemas import (
+    ChannelCreateNested,
+    ChannelRead,
     EquipmentCreate,
     EquipmentCreateNested,
     EquipmentRead,
@@ -90,11 +92,15 @@ def create_equipment(data: EquipmentCreate, session: Session = Depends(get_sessi
     circuit = session.get(Circuit, data.circuit_id)
     if not circuit:
         raise HTTPException(status_code=404, detail="Circuit not found")
-    item = Equipment(**data.model_dump())
+    item = Equipment(**data.model_dump(exclude={"channel_count"}))
     session.add(item)
     session.commit()
     session.refresh(item)
     _log_create(item, session)
+    if data.channel_count:
+        for n in range(1, data.channel_count + 1):
+            session.add(Channel(equipment_id=item.id, number=n))
+        session.commit()
     return item
 
 
@@ -180,6 +186,36 @@ async def upload_file_for_equipment(
     session.commit()
     session.refresh(record)
     return record
+
+
+# --- Nested: channels under equipment ---
+
+@router.get("/{equipment_id}/channels", response_model=List[ChannelRead])
+def list_channels_for_equipment(
+    equipment_id: int, session: Session = Depends(get_session)
+):
+    if not session.get(Equipment, equipment_id):
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    return session.exec(
+        select(Channel)
+        .where(Channel.equipment_id == equipment_id)
+        .order_by(Channel.number)
+    ).all()
+
+
+@router.post("/{equipment_id}/channels", response_model=ChannelRead)
+def create_channel_for_equipment(
+    equipment_id: int,
+    data: ChannelCreateNested,
+    session: Session = Depends(get_session),
+):
+    if not session.get(Equipment, equipment_id):
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    channel = Channel(equipment_id=equipment_id, **data.model_dump())
+    session.add(channel)
+    session.commit()
+    session.refresh(channel)
+    return channel
 
 
 # --- Helpers ---

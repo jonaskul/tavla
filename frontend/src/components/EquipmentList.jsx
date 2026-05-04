@@ -12,8 +12,9 @@ import { t } from '../i18n/no'
 import EquipmentDialog from './EquipmentDialog'
 import ConfirmDialog from './ConfirmDialog'
 import FileUpload from './FileUpload'
+import ChannelTable from './ChannelTable'
 
-export default function EquipmentList({ circuitId }) {
+export default function EquipmentList({ circuitId, panelId }) {
   const qc = useQueryClient()
 
   const [dialog, setDialog] = useState({ open: false, item: null })
@@ -116,6 +117,9 @@ export default function EquipmentList({ circuitId }) {
                   </button>
                 </div>
               </div>
+
+              {/* Channel register */}
+              <ChannelTable equipmentId={eq.id} panelId={panelId} />
 
               {/* Files toggle */}
               <div className="px-5 pb-4 border-t border-gray-100 pt-2">

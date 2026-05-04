@@ -264,7 +264,7 @@ export default function CircuitDetail() {
 
       {/* Equipment */}
       <div className="mb-8">
-        <EquipmentList circuitId={circuitId} />
+        <EquipmentList circuitId={circuitId} panelId={circuit.panel_id} />
       </div>
 
       {/* Changelog */}

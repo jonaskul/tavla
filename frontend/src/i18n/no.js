@@ -123,6 +123,22 @@ export const t = {
     },
   },
 
+  // Channel register
+  channel: {
+    title: "Kanalregister",
+    add: "Legg til kanal",
+    number: "Nr",
+    label: "Etikett",
+    load: "Last",
+    circuit: "Tilknyttet kurs",
+    notes: "Kommentar",
+    noCircuit: "— ikke koblet —",
+    noChannels: "Ingen kanaler registrert",
+    channelCount: "Antall kanaler",
+    deleteConfirm: "Er du sikker på at du vil slette kanalen?",
+    deleteError: "Kunne ikke slette kanalen.",
+  },
+
   // Equipment
   equipment: {
     title: "Fastmontert utstyr",

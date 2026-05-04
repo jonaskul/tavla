@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
-from models import ChangeLog, Circuit, ConnectionPoint, Equipment, File, Panel
+from models import ChangeLog, Channel, Circuit, ConnectionPoint, Equipment, File, Panel
 from schemas import (
     ChangeLogRead,
     CircuitCreate,
@@ -172,7 +172,7 @@ def create_equipment_for_circuit(
     circuit = session.get(Circuit, circuit_id)
     if not circuit:
         raise HTTPException(status_code=404, detail="Circuit not found")
-    item = Equipment(circuit_id=circuit_id, **data.model_dump())
+    item = Equipment(circuit_id=circuit_id, **data.model_dump(exclude={"channel_count"}))
     session.add(item)
     session.commit()
     session.refresh(item)
@@ -185,6 +185,12 @@ def create_equipment_for_circuit(
         desc += f" – {brand_model}"
     session.add(ChangeLog(circuit_id=circuit_id, description=desc))
     session.commit()
+
+    if data.channel_count:
+        for n in range(1, data.channel_count + 1):
+            session.add(Channel(equipment_id=item.id, number=n))
+        session.commit()
+
     return item
 
 

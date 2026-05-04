@@ -75,6 +75,16 @@ export const uploadEquipmentFile = (equipmentId, file) => {
   }).then((r) => r.data)
 }
 
+// --- Channels ---
+export const getChannels = (equipmentId) =>
+  http.get(`/equipment/${equipmentId}/channels`).then((r) => r.data)
+export const createChannel = (equipmentId, data) =>
+  http.post(`/equipment/${equipmentId}/channels`, data).then((r) => r.data)
+export const updateChannel = (id, data) =>
+  http.put(`/channels/${id}`, data).then((r) => r.data)
+export const deleteChannel = (id) =>
+  http.delete(`/channels/${id}`).then((r) => r.data)
+
 // --- Changelog ---
 export const getChangelog = (params) =>
   http.get('/changelog', { params }).then((r) => r.data)
