@@ -31,6 +31,22 @@ export const t = {
     modulesPerRow: "Moduler per skinne",
     notes: "Kommentar",
     configure: "Konfigurer skap",
+    mockup: "Skemontasje",
+    rail: "Skinne",
+    emptySlots: "ledige",
+    addModule: "Legg til modul",
+    editModule: "Rediger modul",
+    deleteModule: "Slett modul",
+  },
+
+  module: {
+    type: "Type",
+    ampere: "Ampere",
+    label: "Etikett",
+    circuit: "Kursbetegnelse",
+    width: "Bredde (moduler)",
+    noCircuit: "Ingen kurs (kobles fritt)",
+    typeRequired: "Type er påkrevd",
   },
 
   // Module types

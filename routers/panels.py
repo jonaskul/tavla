@@ -3,10 +3,12 @@ from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
-from models import Circuit, Panel, Property
+from models import Circuit, Module, Panel, Property
 from schemas import (
     CircuitCreateNested,
     CircuitRead,
+    ModuleCreateNested,
+    ModuleRead,
     PanelCreate,
     PanelRead,
     PanelUpdate,
@@ -110,3 +112,38 @@ def create_circuit_for_panel(
     session.commit()
     session.refresh(circuit)
     return circuit
+
+
+# --- Nested module routes ---
+
+@router.get("/{panel_id}/modules", response_model=List[ModuleRead])
+def list_modules_for_panel(panel_id: int, session: Session = Depends(get_session)):
+    if not session.get(Panel, panel_id):
+        raise HTTPException(status_code=404, detail="Panel not found")
+    return session.exec(select(Module).where(Module.panel_id == panel_id)).all()
+
+
+@router.post("/{panel_id}/modules", response_model=ModuleRead)
+def create_module_for_panel(
+    panel_id: int,
+    data: ModuleCreateNested,
+    session: Session = Depends(get_session),
+):
+    panel = session.get(Panel, panel_id)
+    if not panel:
+        raise HTTPException(status_code=404, detail="Panel not found")
+    if data.row < 0 or data.row >= panel.rows:
+        raise HTTPException(status_code=400, detail="Row out of bounds")
+    if data.position < 0 or data.position + data.width > panel.modules_per_row:
+        raise HTTPException(status_code=400, detail="Position out of bounds")
+    existing = session.exec(
+        select(Module).where(Module.panel_id == panel_id, Module.row == data.row)
+    ).all()
+    for m in existing:
+        if data.position < m.position + m.width and data.position + data.width > m.position:
+            raise HTTPException(status_code=409, detail="Module overlaps with existing module")
+    module = Module(panel_id=panel_id, **data.model_dump())
+    session.add(module)
+    session.commit()
+    session.refresh(module)
+    return module

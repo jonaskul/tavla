@@ -104,6 +104,18 @@ class ModuleUpdate(BaseModel):
     circuit_id: Optional[int] = None
 
 
+class ModuleCreateNested(BaseModel):
+    """Body schema for POST /api/panels/{id}/modules (panel_id from URL)."""
+    row: int
+    position: int
+    width: int = 1
+    type: ModuleType
+    label: Optional[str] = None
+    ampere: Optional[int] = None
+    has_rcd: bool = False
+    circuit_id: Optional[int] = None
+
+
 # --- Circuit ---
 
 class CircuitRead(BaseModel):

@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getPanel, getCircuits } from '../api/client'
 import { t } from '../i18n/no'
+import PanelCanvas from '../components/PanelMockup/PanelCanvas'
 
 export default function PanelDetail() {
   const { id } = useParams()
@@ -51,11 +52,8 @@ export default function PanelDetail() {
         )}
       </div>
 
-      <div className="rounded-lg border border-dashed border-yellow-400 bg-yellow-50 p-4 text-sm text-yellow-800 mb-6">
-        <p className="font-medium">Skap-mockup kjem i Fase 2</p>
-        <p className="text-yellow-700 text-xs mt-1">
-          Visuell skemontasje og modulkonfigurasjon kjem i fase 2.
-        </p>
+      <div className="mb-6">
+        <PanelCanvas panel={panel} />
       </div>
 
       <h2 className="text-lg font-semibold text-gray-800 mb-3">{t.nav.circuit}</h2>
