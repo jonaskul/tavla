@@ -29,8 +29,8 @@ info "Fetching available branches from GitHub..."
 
 mapfile -t BRANCHES < <(
     curl -sf --max-time 10 "$GITHUB_API" 2>/dev/null \
-        | grep -o '"name":"[^"]*"' \
-        | sed 's/"name":"//;s/"//' \
+        | grep -o '"name": *"[^"]*"' \
+        | sed 's/"name": *"//;s/"//' \
         | sort \
     || true
 )
