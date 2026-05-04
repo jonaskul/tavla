@@ -82,3 +82,31 @@ def cp_factory(client, circuit_factory):
             json={"type": type, "location": location},
         ).json()
     return make
+
+
+@pytest.fixture
+def connection_point_factory(client, circuit_factory):
+    def make(circuit_id=None):
+        if circuit_id is None:
+            circuit = circuit_factory()
+            circuit_id = circuit["id"]
+        return client.post(
+            f"/api/circuits/{circuit_id}/connection_points",
+            json={"type": "junction_box", "location": "Tak stue"},
+        ).json()
+    return make
+
+
+@pytest.fixture
+def file_factory(client, connection_point_factory):
+    import io
+    def make(connection_point_id=None):
+        if connection_point_id is None:
+            cp = connection_point_factory()
+            connection_point_id = cp["id"]
+        fake_image = io.BytesIO(b"fake jpeg content")
+        return client.post(
+            f"/api/files/upload?connection_point_id={connection_point_id}",
+            files={"file": ("test.jpg", fake_image, "image/jpeg")},
+        ).json()
+    return make

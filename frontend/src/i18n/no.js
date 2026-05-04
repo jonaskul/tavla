@@ -124,7 +124,7 @@ export const t = {
     upload: "Last opp fil",
     uploadHint: "Slipp filer her eller klikk for å velge",
     acceptedTypes: "JPG, PNG, PDF opptil 20 MB",
-    invalidType: "Kun JPG, PNG og PDF er tillatt",
+    invalidType: "Filtype ikke støttet. Kun JPG, PNG og PDF er tillatt.",
     tooLarge: "Filen er for stor. Maks 20 MB",
     uploadError: "Filopplasting feilet",
     deleteConfirm: "Er du sikker på at du vil slette filen?",

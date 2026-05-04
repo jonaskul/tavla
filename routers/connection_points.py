@@ -3,18 +3,25 @@ import re
 import uuid
 
 from fastapi import APIRouter, Depends, File as FileField, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from sqlalchemy import desc
 from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
 from models import ChangeLog, Circuit, ConnectionPoint, File
-from schemas import ConnectionPointCreate, ConnectionPointRead, ConnectionPointUpdate, FileRead
+from schemas import (
+    ChangeLogRead,
+    ConnectionPointCreate,
+    ConnectionPointRead,
+    ConnectionPointUpdate,
+    FileRead,
+)
 
 router = APIRouter()
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+ALLOWED_MIMETYPES = {"image/jpeg", "image/png", "application/pdf"}
 
 CP_TYPE_LABELS = {
     "junction_box": "Koblingsboks",
@@ -32,11 +39,18 @@ MAGIC_BYTES = {
 }
 
 
-def detect_mimetype(content: bytes) -> Optional[str]:
+def detect_magic(content: bytes) -> Optional[str]:
     for magic, mime in MAGIC_BYTES.items():
         if content[: len(magic)] == magic:
             return mime
     return None
+
+
+def resolve_mimetype(content: bytes, content_type: str) -> Optional[str]:
+    magic = detect_magic(content)
+    if magic is not None:
+        return magic if magic in ALLOWED_MIMETYPES else None
+    return content_type if content_type in ALLOWED_MIMETYPES else None
 
 
 def sanitize_filename(filename: str) -> str:
@@ -45,6 +59,11 @@ def sanitize_filename(filename: str) -> str:
     name = re.sub(r"[^\w\-. ]", "_", name)
     name = name.strip(". ").strip()
     return name or "file"
+
+
+def _cp_type_label(cp_type) -> str:
+    val = cp_type.value if hasattr(cp_type, "value") else str(cp_type)
+    return CP_TYPE_LABELS.get(val, val)
 
 
 @router.get("", response_model=List[ConnectionPointRead])
@@ -93,12 +112,10 @@ def update_connection_point(
     session.commit()
     session.refresh(cp)
 
-    type_label = CP_TYPE_LABELS.get(cp.type.value if hasattr(cp.type, "value") else cp.type, str(cp.type))
     entry = ChangeLog(
         circuit_id=cp.circuit_id,
-        connection_point_id=cp.id,
         changed_by="system",
-        description=f"Koblingspunkt oppdatert: {type_label} – {cp.location}",
+        description=f"Koblingspunkt oppdatert: {_cp_type_label(cp.type)} – {cp.location}",
     )
     session.add(entry)
     session.commit()
@@ -120,9 +137,9 @@ def delete_connection_point(cp_id: int, session: Session = Depends(get_session))
             detail="Cannot delete connection point that has files",
         )
 
-    type_label = CP_TYPE_LABELS.get(cp.type.value if hasattr(cp.type, "value") else cp.type, str(cp.type))
     circuit_id = cp.circuit_id
     location = cp.location
+    type_label = _cp_type_label(cp.type)
 
     cp_data = ConnectionPointRead.model_validate(cp)
     session.delete(cp)
@@ -137,6 +154,21 @@ def delete_connection_point(cp_id: int, session: Session = Depends(get_session))
     session.commit()
 
     return cp_data
+
+
+# --- Nested: changelog under connection point ---
+
+@router.get("/{cp_id}/changelog", response_model=List[ChangeLogRead])
+def list_changelog_for_connection_point(
+    cp_id: int, session: Session = Depends(get_session)
+):
+    if not session.get(ConnectionPoint, cp_id):
+        raise HTTPException(status_code=404, detail="Connection point not found")
+    return session.exec(
+        select(ChangeLog)
+        .where(ChangeLog.connection_point_id == cp_id)
+        .order_by(desc(ChangeLog.changed_at))
+    ).all()
 
 
 # --- Nested: files under connection point ---
@@ -165,11 +197,11 @@ async def upload_file_for_connection_point(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large (max 20 MB)")
 
-    real_mime = detect_mimetype(content)
+    real_mime = resolve_mimetype(content, file.content_type or "")
     if real_mime is None:
         raise HTTPException(
-            status_code=415,
-            detail="Unsupported file type. Only JPG, PNG, and PDF are allowed.",
+            status_code=400,
+            detail="Filtype ikke støttet. Kun JPG, PNG og PDF er tillatt.",
         )
 
     safe_name = sanitize_filename(file.filename or "file")

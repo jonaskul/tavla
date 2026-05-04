@@ -6,7 +6,7 @@ import { t } from '../i18n/no'
 const ACCEPT_MIMES = new Set(['image/jpeg', 'image/png', 'application/pdf'])
 const MAX_SIZE = 20 * 1024 * 1024
 
-export default function FileUpload({ connectionPointId }) {
+export default function FileUpload({ connectionPointId, onUploaded }) {
   const inputRef = useRef(null)
   const [dragOver, setDragOver] = useState(false)
   const [uploadError, setUploadError] = useState(null)
@@ -21,9 +21,10 @@ export default function FileUpload({ connectionPointId }) {
 
   const uploadMutation = useMutation({
     mutationFn: (file) => uploadFile(connectionPointId, file),
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['files', connectionPointId] })
       setUploadError(null)
+      onUploaded?.(data)
     },
     onError: (err) => {
       setUploadError(err.response?.data?.detail || t.files.uploadError)
@@ -79,7 +80,6 @@ export default function FileUpload({ connectionPointId }) {
           ref={inputRef}
           type="file"
           data-testid="file-input"
-          accept=".jpg,.jpeg,.png,.pdf"
           className="hidden"
           onChange={(e) => validateAndUpload(e.target.files)}
           multiple

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import desc
 from sqlmodel import Session, select
 from typing import List, Optional
 
@@ -129,7 +130,6 @@ def create_connection_point_for_circuit(
     type_label = CP_TYPE_LABELS.get(cp.type.value if hasattr(cp.type, "value") else cp.type, cp.type)
     entry = ChangeLog(
         circuit_id=circuit_id,
-        connection_point_id=cp.id,
         changed_by="system",
         description=f"Koblingspunkt opprettet: {type_label} – {cp.location}",
     )
@@ -148,5 +148,7 @@ def list_changelog_for_circuit(
     if not session.get(Circuit, circuit_id):
         raise HTTPException(status_code=404, detail="Circuit not found")
     return session.exec(
-        select(ChangeLog).where(ChangeLog.circuit_id == circuit_id)
+        select(ChangeLog)
+        .where(ChangeLog.circuit_id == circuit_id)
+        .order_by(desc(ChangeLog.changed_at))
     ).all()
