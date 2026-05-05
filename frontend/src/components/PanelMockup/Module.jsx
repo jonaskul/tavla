@@ -1,6 +1,6 @@
 import { useModuleTypes } from '../../contexts/ModuleTypesContext'
 
-function hexTextColor(hex) {
+export function hexTextColor(hex) {
   if (!hex || hex.length < 7) return '#ffffff'
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
@@ -9,9 +9,9 @@ function hexTextColor(hex) {
 }
 
 // Each slot is 32px wide with 1px gap → pixel width = width * 33 - 1
-const slotPx = (width) => width * 33 - 1
+export const slotPx = (width) => width * 33 - 1
 
-export default function Module({ module, onClick, onContextMenu }) {
+export default function Module({ module, isShaking, onMouseDown, onContextMenu }) {
   const { byKey } = useModuleTypes()
   const isVacant = module.is_vacant
   const typeDef = byKey[module.type]
@@ -22,10 +22,10 @@ export default function Module({ module, onClick, onContextMenu }) {
 
   return (
     <div
-      data-testid={`module-${module.id}`}
-      className={`module-${module.type} ${isVacant ? 'module-vacant' : ''} h-16 rounded flex flex-col items-center justify-center cursor-pointer select-none px-1 shrink-0`}
+      data-testid="draggable-module"
+      className={`${isShaking ? 'shake' : ''} module-${module.type} ${isVacant ? 'module-vacant' : ''} h-16 rounded flex flex-col items-center justify-center cursor-grab select-none px-1 shrink-0`}
       style={{ width: slotPx(module.width), backgroundColor: bgColor, color: textColor }}
-      onClick={onClick}
+      onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
     >
       {isVacant ? (
