@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from database import get_session
-from models import Circuit, ConnectionPoint, Equipment, Panel, Property
+from models import Channel, Circuit, ConnectionPoint, Equipment, Panel, Property
 
 router = APIRouter()
 
@@ -60,11 +60,32 @@ def export_property(property_id: int, session: Session = Depends(get_session)):
                     {"id": cp.id, "type": cp.type, "location": cp.location}
                     for cp in cps
                 ],
-                "equipment": [
-                    {"id": e.id, "type": e.type, "brand": e.brand, "model": e.model}
-                    for e in equip
-                ],
+                "equipment": [],
             }
+
+            for e in equip:
+                channels = session.exec(
+                    select(Channel).where(Channel.equipment_id == e.id)
+                ).all()
+                circuit_data["equipment"].append({
+                    "id": e.id,
+                    "type": e.type,
+                    "brand": e.brand,
+                    "model": e.model,
+                    "watt": e.watt,
+                    "channels": [
+                        {
+                            "id": ch.id,
+                            "number": ch.number,
+                            "label": ch.label,
+                            "load": ch.load,
+                            "watt": ch.watt,
+                            "channel_type": ch.channel_type,
+                        }
+                        for ch in sorted(channels, key=lambda c: c.number)
+                    ],
+                })
+
             panel_data["circuits"].append(circuit_data)
 
         result["panels"].append(panel_data)

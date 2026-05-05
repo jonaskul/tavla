@@ -29,6 +29,12 @@ export const t = {
     export: "Eksporter JSON",
     exportSuccess: "JSON-eksport lastet ned",
     exportError: "Eksport feilet. Prøv igjen.",
+    tabPanels: "Skap",
+    tabOverview: "Oversikt",
+    treeNoPanels: "Ingen sikringsskap registrert på denne eiendommen.",
+    treeNoCircuits: "Ingen kurser i dette skapet.",
+    treeEmptyCircuit: "Tom kurs",
+    treeChannel: "Kanal",
   },
 
   // Panel

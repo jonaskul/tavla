@@ -6,6 +6,7 @@ import { t } from '../i18n/no'
 import PropertyDialog from '../components/PropertyDialog'
 import PanelDialog from '../components/PanelDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
+import PropertyTree from '../components/PropertyTree'
 
 export default function PropertyDetail() {
   const { id } = useParams()
@@ -13,6 +14,7 @@ export default function PropertyDetail() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
+  const [tab, setTab] = useState('panels')
   const [propDialog, setPropDialog] = useState(false)
   const [propDeleteConfirm, setPropDeleteConfirm] = useState({ open: false, error: null })
   const [panelDialog, setPanelDialog] = useState({ open: false, item: null })
@@ -162,59 +164,84 @@ export default function PropertyDetail() {
         </div>
       </div>
 
-      {/* Panels section */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">{t.property.panels}</h2>
-        <button
-          onClick={() => setPanelDialog({ open: true, item: null })}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
-        >
-          {t.panel.add}
-        </button>
+      {/* Tab bar */}
+      <div className="flex items-center justify-between border-b border-gray-200 mb-6">
+        <div className="flex">
+          {[
+            { key: 'panels', label: t.property.tabPanels },
+            { key: 'overview', label: t.property.tabOverview },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                tab === key
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {tab === 'panels' && (
+          <button
+            onClick={() => setPanelDialog({ open: true, item: null })}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors mb-1"
+          >
+            {t.panel.add}
+          </button>
+        )}
       </div>
 
-      {loadingPanels ? (
-        <p className="text-gray-500 text-sm">{t.common.loading}</p>
-      ) : panels.length === 0 ? (
-        <p className="text-gray-500 text-sm">Ingen sikringsskap registrert enda.</p>
-      ) : (
-        <ul className="space-y-2">
-          {panels.map((panel) => (
-            <li
-              key={panel.id}
-              className="bg-white border border-gray-200 rounded-lg px-5 py-4 flex items-center justify-between shadow-sm"
-            >
-              <div>
-                <Link
-                  to={`/skap/${panel.id}`}
-                  className="font-medium text-blue-700 hover:underline"
-                >
-                  {panel.name}
-                </Link>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {panel.location} &mdash; {panel.rows}{' '}
-                  {t.panel.rows.toLowerCase()}, {panel.modules_per_row}{' '}
-                  {t.panel.modulesPerRow.toLowerCase()}
-                </p>
-              </div>
-              <div className="flex gap-2 shrink-0 ml-4">
-                <button
-                  onClick={() => setPanelDialog({ open: true, item: panel })}
-                  className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  {t.common.edit}
-                </button>
-                <button
-                  onClick={() => setPanelDeleteConfirm({ open: true, item: panel, error: null })}
-                  className="px-3 py-1 text-xs text-white bg-red-600 rounded-md hover:bg-red-700"
-                >
-                  {t.common.delete}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+      {/* Tab: Skap */}
+      {tab === 'panels' && (
+        loadingPanels ? (
+          <p className="text-gray-500 text-sm">{t.common.loading}</p>
+        ) : panels.length === 0 ? (
+          <p className="text-gray-500 text-sm">{t.property.treeNoPanels}</p>
+        ) : (
+          <ul className="space-y-2">
+            {panels.map((panel) => (
+              <li
+                key={panel.id}
+                className="bg-white border border-gray-200 rounded-lg px-5 py-4 flex items-center justify-between shadow-sm"
+              >
+                <div>
+                  <Link
+                    to={`/skap/${panel.id}`}
+                    className="font-medium text-blue-700 hover:underline"
+                  >
+                    {panel.name}
+                  </Link>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {panel.location} &mdash; {panel.rows}{' '}
+                    {t.panel.rows.toLowerCase()}, {panel.modules_per_row}{' '}
+                    {t.panel.modulesPerRow.toLowerCase()}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0 ml-4">
+                  <button
+                    onClick={() => setPanelDialog({ open: true, item: panel })}
+                    className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    {t.common.edit}
+                  </button>
+                  <button
+                    onClick={() => setPanelDeleteConfirm({ open: true, item: panel, error: null })}
+                    className="px-3 py-1 text-xs text-white bg-red-600 rounded-md hover:bg-red-700"
+                  >
+                    {t.common.delete}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
       )}
+
+      {/* Tab: Oversikt */}
+      {tab === 'overview' && <PropertyTree propertyId={propertyId} />}
 
       {/* Property dialogs */}
       <PropertyDialog
