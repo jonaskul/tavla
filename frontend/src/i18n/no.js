@@ -4,7 +4,7 @@
 export const t = {
   // Navigation
   nav: {
-    properties: "Eiendommer",
+    properties: "Anlegg",
     panel: "Sikringsskap",
     circuit: "Kurs",
     connectionPoint: "Koblingspunkt",
@@ -14,24 +14,24 @@ export const t = {
 
   // Properties
   property: {
-    title: "Eiendommer",
-    add: "Legg til eiendom",
-    edit: "Rediger eiendom",
+    title: "Anlegg",
+    add: "Legg til anlegg",
+    edit: "Rediger anlegg",
     name: "Navn",
     address: "Adresse",
     panels: "Sikringsskap",
-    noProperties: "Ingen eiendommer registrert",
+    noProperties: "Ingen anlegg registrert",
     nameRequired: "Navn er påkrevd",
     addressRequired: "Adresse er påkrevd",
-    deleteConfirm: "Er du sikker på at du vil slette eiendommen? Dette kan ikke angres.",
-    cannotDeleteHasPanels: "Kan ikke slette eiendom som har sikringsskap. Slett skapene først.",
-    deleteError: "Kunne ikke slette eiendommen.",
+    deleteConfirm: "Er du sikker på at du vil slette anlegget? Dette kan ikke angres.",
+    cannotDeleteHasPanels: "Kan ikke slette anlegg som har sikringsskap. Slett skapene først.",
+    deleteError: "Kunne ikke slette anlegget.",
     export: "Eksporter JSON",
     exportSuccess: "JSON-eksport lastet ned",
     exportError: "Eksport feilet. Prøv igjen.",
     tabPanels: "Skap",
     tabOverview: "Oversikt",
-    treeNoPanels: "Ingen sikringsskap registrert på denne eiendommen.",
+    treeNoPanels: "Ingen sikringsskap registrert på dette anlegget.",
     treeNoCircuits: "Ingen kurser i dette skapet.",
     treeEmptyCircuit: "Tom kurs",
     treeChannel: "Kanal",

@@ -80,7 +80,7 @@ export default function Properties() {
             >
               <div>
                 <Link
-                  to={`/eiendommer/${prop.id}`}
+                  to={`/anlegg/${prop.id}`}
                   className="font-medium text-blue-700 hover:underline"
                 >
                   {prop.name}

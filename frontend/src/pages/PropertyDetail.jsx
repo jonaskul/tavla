@@ -125,7 +125,7 @@ export default function PropertyDetail() {
 
   if (loadingProp) return <p className="text-gray-500 text-sm">{t.common.loading}</p>
   if (isError || !property)
-    return <p className="text-red-500 text-sm">Eiendom ikke funnet.</p>
+    return <p className="text-red-500 text-sm">Anlegg ikke funnet.</p>
 
   return (
     <div>

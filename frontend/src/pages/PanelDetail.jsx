@@ -62,7 +62,7 @@ export default function PanelDetail() {
     mutationFn: () => deletePanel(panelId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['panels', panel?.property_id] })
-      navigate(`/eiendommer/${panel.property_id}`)
+      navigate(`/anlegg/${panel.property_id}`)
     },
     onError: (err) => {
       const status = err.response?.status
@@ -120,7 +120,7 @@ export default function PanelDetail() {
     <div>
       <div className="mb-5">
         <Link
-          to={`/eiendommer/${panel.property_id}`}
+          to={`/anlegg/${panel.property_id}`}
           className="text-sm text-blue-600 hover:underline"
         >
           &larr; {t.common.back}

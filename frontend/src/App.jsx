@@ -16,7 +16,7 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Properties />} />
-          <Route path="/eiendommer/:id" element={<PropertyDetail />} />
+          <Route path="/anlegg/:id" element={<PropertyDetail />} />
           <Route path="/skap/:id" element={<PanelDetail />} />
           <Route path="/kurs/:id" element={<CircuitDetail />} />
           <Route path="/innstillinger" element={<SettingsLayout />}>

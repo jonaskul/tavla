@@ -124,7 +124,7 @@ export default function CircuitDetail() {
       <div className="mb-5 flex gap-4 text-sm">
         {panel && (
           <Link
-            to={`/eiendommer/${panel.property_id}`}
+            to={`/anlegg/${panel.property_id}`}
             className="text-blue-600 hover:underline"
           >
             &larr; {t.property.title}
