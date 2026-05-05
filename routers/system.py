@@ -3,6 +3,7 @@ import asyncio
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -11,6 +12,13 @@ from fastapi.responses import StreamingResponse
 router = APIRouter()
 
 BASE_DIR = Path(os.getenv("TAVLA_DIR", str(Path(__file__).resolve().parent.parent)))
+
+# Use the same Python / pip that runs the server.
+# Outside a venv (PEP 668 systems) we need --break-system-packages.
+_IN_VENV = sys.prefix != sys.base_prefix
+_PIP_CMD = [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"]
+if not _IN_VENV:
+    _PIP_CMD.append("--break-system-packages")
 
 
 def _run(*args, timeout=30, cwd=None):
@@ -102,7 +110,7 @@ def trigger_update():
 _UPDATE_STEPS = [
     ("fetching",     ["git", "fetch", "origin"]),
     ("pulling",      ["git", "pull"]),
-    ("dependencies", ["pip", "install", "-r", "requirements.txt"]),
+    ("dependencies", _PIP_CMD),
     ("frontend",     ["npm", "run", "build", "--prefix", "frontend"]),
     ("migrations",   ["alembic", "upgrade", "head"]),
     ("restarting",   ["systemctl", "restart", "tavla-backend"]),
