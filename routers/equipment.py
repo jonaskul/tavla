@@ -130,6 +130,8 @@ def delete_equipment(equipment_id: int, session: Session = Depends(get_session))
     item_data = EquipmentRead.model_validate(item)
     circuit_id = item.circuit_id
     label = _type_label(item.type)
+    for ch in session.exec(select(Channel).where(Channel.equipment_id == item.id)).all():
+        session.delete(ch)
     session.delete(item)
     session.commit()
     _log_delete(circuit_id, label, session)
