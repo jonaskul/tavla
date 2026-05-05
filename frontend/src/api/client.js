@@ -98,6 +98,11 @@ export const updateModuleType = (id, data) => http.put(`/module_types/${id}`, da
 export const deleteModuleType = (id) => http.delete(`/module_types/${id}`).then((r) => r.data)
 export const getModuleTypeUsage = (key) => http.get(`/module_types/${key}/usage`).then((r) => r.data)
 
+// --- System ---
+export const getSystemStatus = () => http.get('/system/status').then((r) => r.data)
+export const checkSystemUpdate = () => http.get('/system/check-update').then((r) => r.data)
+export const getSystemPending = () => http.get('/system/pending').then((r) => r.data)
+
 // --- Modules ---
 export const getPanelModules = (panelId) =>
   http.get(`/panels/${panelId}/modules`).then((r) => r.data)

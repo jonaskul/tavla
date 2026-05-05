@@ -274,11 +274,7 @@ export default function ModuleTypeAdmin() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.settings.title}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{s.title}</p>
-        </div>
+      <div className="mb-4 flex justify-end">
         <button
           onClick={() => setDialog({ open: true, item: null })}
           className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700"

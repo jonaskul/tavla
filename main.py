@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import os
 
 from database import create_db_and_tables, engine
-from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog, modules, channels, module_types
+from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog, modules, channels, module_types, system
 from routers.module_types import seed_builtin_types
 from sqlmodel import Session
 
@@ -45,6 +45,7 @@ app.include_router(changelog.router, prefix="/api/changelog", tags=["changelog"]
 app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 app.include_router(channels.router, prefix="/api/channels", tags=["channels"])
 app.include_router(module_types.router, prefix="/api/module_types", tags=["module_types"])
+app.include_router(system.router, prefix="/api/system", tags=["system"])
 
 
 @app.get("/api/health")

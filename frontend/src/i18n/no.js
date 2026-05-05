@@ -209,9 +209,39 @@ export const t = {
     descriptionRequired: "Beskrivelse er påkrevd",
   },
 
+  // System update
+  system: {
+    title: "System",
+    versionCard: "Gjeldende versjon",
+    commit: "Commit",
+    branch: "Gren",
+    commitDate: "Dato",
+    commitMessage: "Beskrivelse",
+    checkUpdate: "Se etter oppdateringer",
+    checking: "Sjekker...",
+    upToDate: "Ingen oppdateringer tilgjengelig",
+    updatesAvailable: "{n} oppdatering(er) tilgjengelig",
+    startUpdate: "Installer oppdateringer",
+    updating: "Oppdaterer...",
+    updateDone: "Oppdatering fullført",
+    updateError: "Oppdatering feilet",
+    changelog: "Endringer",
+    steps: {
+      fetching: "Henter fra GitHub",
+      pulling: "Laster ned kode",
+      dependencies: "Oppdaterer avhengigheter",
+      frontend: "Bygger frontend",
+      migrations: "Kjører migrasjoner",
+      restarting: "Starter tjeneste på nytt",
+    },
+    devModeRestart: "Restart ikke nødvendig i utviklingsmodus",
+  },
+
   // Settings
   settings: {
     title: "Innstillinger",
+    tabModuleTypes: "Modultyper",
+    tabSystem: "System",
     moduleTypes: {
       title: "Modultyper",
       add: "Legg til modultype",

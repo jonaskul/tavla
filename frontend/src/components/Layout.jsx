@@ -1,8 +1,17 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getSystemPending } from '../api/client'
 import { t } from '../i18n/no'
 
 export default function Layout({ children }) {
   const { pathname } = useLocation()
+
+  const { data: pending } = useQuery({
+    queryKey: ['system-pending'],
+    queryFn: getSystemPending,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -27,13 +36,16 @@ export default function Layout({ children }) {
             </Link>
             <Link
               to="/innstillinger/modultyper"
-              className={
+              className={`relative ${
                 pathname.startsWith('/innstillinger')
                   ? 'text-blue-700 font-medium'
                   : 'text-gray-600 hover:text-blue-600'
-              }
+              }`}
             >
               {t.nav.settings}
+              {pending?.updates_available && (
+                <span className="absolute -top-1 -right-2 w-2 h-2 bg-orange-500 rounded-full" />
+              )}
             </Link>
           </nav>
         </div>
