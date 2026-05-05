@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { t } from '../i18n/no'
 
-const empty = { name: '', location: '', rows: 1, modules_per_row: 24, notes: '' }
-
-const QUICK_SIZES = [24, 36, 48]
+const empty = { name: '', location: '', rows: '1', modules_per_row: 24, notes: '' }
 
 export default function PanelDialog({ open, initial, onSave, onClose }) {
   const [form, setForm] = useState(empty)
@@ -16,7 +14,7 @@ export default function PanelDialog({ open, initial, onSave, onClose }) {
           ? {
               name: initial.name ?? '',
               location: initial.location ?? '',
-              rows: initial.rows ?? 1,
+              rows: String(initial.rows ?? 1),
               modules_per_row: initial.modules_per_row ?? 24,
               notes: initial.notes ?? '',
             }
@@ -35,7 +33,17 @@ export default function PanelDialog({ open, initial, onSave, onClose }) {
   if (!open) return null
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
-  const setNum = (field) => (e) => setForm((f) => ({ ...f, [field]: Number(e.target.value) }))
+
+  const setRows = (e) => {
+    // Strip leading zeros while allowing empty string during typing
+    const raw = e.target.value.replace(/[^0-9]/g, '')
+    setForm((f) => ({ ...f, rows: raw === '' ? '' : String(parseInt(raw, 10)) }))
+  }
+
+  const setModulesPerRow = (val) => {
+    const n = Math.max(1, Math.min(96, Number(val) || 1))
+    setForm((f) => ({ ...f, modules_per_row: n }))
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -46,11 +54,13 @@ export default function PanelDialog({ open, initial, onSave, onClose }) {
     onSave({
       name: form.name.trim(),
       location: form.location.trim(),
-      rows: form.rows,
+      rows: parseInt(form.rows, 10) || 1,
       modules_per_row: form.modules_per_row,
       notes: form.notes.trim() || null,
     })
   }
+
+  const sliderVal = Math.min(50, form.modules_per_row)
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -90,40 +100,32 @@ export default function PanelDialog({ open, initial, onSave, onClose }) {
                 {t.panel.rows}
               </label>
               <input
-                type="number"
-                min="1"
-                max="10"
+                type="text"
+                inputMode="numeric"
                 value={form.rows}
-                onChange={setNum('rows')}
+                onChange={setRows}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t.panel.modulesPerRow}
               </label>
-              <div className="flex items-center gap-2 flex-wrap">
-                {QUICK_SIZES.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, modules_per_row: n }))}
-                    className={`px-3 py-1.5 text-sm rounded-md border font-medium ${
-                      form.modules_per_row === n
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+              <div className="flex items-center gap-3">
                 <input
-                  type="number"
-                  min="6"
-                  max="96"
+                  type="range"
+                  min="1"
+                  max="50"
+                  value={sliderVal}
+                  onChange={(e) => setModulesPerRow(e.target.value)}
+                  className="flex-1 accent-blue-600"
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
                   value={form.modules_per_row}
-                  onChange={setNum('modules_per_row')}
-                  className="w-20 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setModulesPerRow(e.target.value)}
+                  className="w-16 border border-gray-300 rounded-md px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1.5">{t.panel.modulesPerRowHint}</p>
