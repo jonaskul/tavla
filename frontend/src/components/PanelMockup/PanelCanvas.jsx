@@ -68,18 +68,20 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
   const qc = useQueryClient()
   const { byKey } = useModuleTypes()
 
+  // drag: create-drag (empty-slot selection)
+  // drag.anchor = fixed point (mousedown), drag.current = other end (can be < anchor)
   const [drag, setDrag] = useState(null)
   const [dialog, setDialog] = useState(null)
   const [shakingModuleId, setShakingModuleId] = useState(null)
 
-  // moveDrag uses a ref (for global handlers) + state (for rendering)
   const moveDragRef = useRef(null)
   const [moveDrag, _setMoveDrag] = useState(null)
 
-  // Stable refs for values used in the global useEffect (empty deps)
   const onSlotSelectRef = useRef(onSlotSelect)
   onSlotSelectRef.current = onSlotSelect
   const occupiedRef = useRef({})
+  const panelMprRef = useRef(panel.modules_per_row)
+  panelMprRef.current = panel.modules_per_row
 
   const { data: modules = [] } = useQuery({
     queryKey: ['modules', panel.id],
@@ -99,15 +101,12 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
   const updateMut = useMutation({ mutationFn: ({ id, data }) => updateModule(id, data), onSuccess: invalidate })
   const deleteMut = useMutation({ mutationFn: (id) => deleteModule(id), onSuccess: invalidate })
 
-  // Keep a ref to updateMut.mutate (stable per React Query docs, but safe to ref anyway)
   const updateMutRef = useRef(updateMut)
   updateMutRef.current = updateMut
 
-  // Compute occupied map each render and sync to ref
   const occupied = buildOccupied(modules)
   occupiedRef.current = occupied
 
-  // Apply grabbing cursor globally while dragging
   useEffect(() => {
     if (moveDrag?.isDragging) {
       document.body.style.cursor = 'grabbing'
@@ -115,13 +114,44 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
     }
   }, [moveDrag?.isDragging])
 
-  // Global mouse handlers — registered once, use refs for current values
   useEffect(() => {
+    // Check if a move-drag module fits at (row, pos) — runs in global handler, uses refs
+    const fitsAt = (mod, row, pos) => {
+      const occ = occupiedRef.current
+      const mpr = panelMprRef.current
+      if (pos < 0 || pos + mod.width > mpr) return false
+      for (let i = 0; i < mod.width; i++) {
+        const cell = occ[`${row}-${pos + i}`]
+        if (cell && cell.id !== mod.id) return false
+      }
+      return true
+    }
+
     const onMouseMove = (e) => {
       const md = moveDragRef.current
       if (!md) return
       if (!md.isDragging && Math.hypot(e.clientX - md.startX, e.clientY - md.startY) < DRAG_THRESHOLD) return
-      const next = { ...md, isDragging: true, mouseX: e.clientX, mouseY: e.clientY }
+
+      // Use elementsFromPoint to find the slot under the cursor (reliable in both directions)
+      let targetRow = null
+      let targetPos = null
+      let isValid = false
+
+      const els = document.elementsFromPoint(e.clientX, e.clientY)
+      for (const el of els) {
+        const sr = el.dataset.slotRow
+        const sp = el.dataset.slotPos
+        if (sr !== undefined && sp !== undefined) {
+          const row = parseInt(sr, 10)
+          const pos = parseInt(sp, 10)
+          targetRow = row
+          targetPos = pos
+          isValid = fitsAt(md.module, row, pos)
+          break
+        }
+      }
+
+      const next = { ...md, isDragging: true, mouseX: e.clientX, mouseY: e.clientY, targetRow, targetPos, isValid }
       moveDragRef.current = next
       _setMoveDrag(next)
     }
@@ -133,8 +163,10 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
         // Handle create drag
         setDrag((d) => {
           if (d) {
-            const width = d.current - d.start + 1
-            const sel = { mode: 'create', row: d.row, position: d.start, width }
+            const selStart = Math.min(d.anchor, d.current)
+            const selEnd   = Math.max(d.anchor, d.current)
+            const width = selEnd - selStart + 1
+            const sel = { mode: 'create', row: d.row, position: selStart, width }
             setDialog(sel)
             onSlotSelectRef.current?.(sel)
           }
@@ -143,25 +175,21 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
         return
       }
 
-      // Clear move drag
       moveDragRef.current = null
       _setMoveDrag(null)
 
       if (!md.isDragging) {
-        // Click → open edit dialog
         setDialog({ mode: 'edit', row: md.module.row, position: md.module.position, width: md.module.width, module: md.module })
         return
       }
 
       if (md.targetRow === null || !md.isValid) {
-        // Invalid drop → shake animation
         setShakingModuleId(md.module.id)
         setTimeout(() => setShakingModuleId(null), 400)
         return
       }
 
       if (md.targetRow === md.module.row && md.targetPos === md.module.position) {
-        // Dropped on same slot → edit
         setDialog({ mode: 'edit', row: md.module.row, position: md.module.position, width: md.module.width, module: md.module })
         return
       }
@@ -175,50 +203,38 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, []) // empty deps — all dynamic values accessed via refs
+  }, [])
 
-  const checkMoveFits = (module, row, pos) => {
-    const occ = occupiedRef.current
-    if (pos < 0 || pos + module.width > panel.modules_per_row) return false
-    for (let i = 0; i < module.width; i++) {
-      const cell = occ[`${row}-${pos + i}`]
-      if (cell && cell.id !== module.id) return false
-    }
-    return true
-  }
-
+  // Bidirectional create-drag selection via slot onMouseEnter
   const handleSlotMouseDown = (row, position) => {
     if (occupied[`${row}-${position}`]) return
-    setDrag({ row, start: position, current: position })
+    setDrag({ row, anchor: position, current: position })
   }
 
   const handleSlotMouseEnter = (row, position) => {
-    const md = moveDragRef.current
-    if (md?.isDragging) {
-      const valid = checkMoveFits(md.module, row, position)
-      const next = { ...md, targetRow: row, targetPos: position, isValid: valid }
-      moveDragRef.current = next
-      _setMoveDrag(next)
-      return
-    }
+    // Move drag is handled entirely by onMouseMove — skip here
+    if (moveDragRef.current?.isDragging) return
 
     if (!drag || drag.row !== row) return
     if (occupied[`${row}-${position}`]) return
-    let end = drag.start
-    for (let p = drag.start; p <= position; p++) {
-      if (occupied[`${row}-${p}`]) break
-      end = p
-    }
-    setDrag((d) => ({ ...d, current: end }))
-  }
 
-  // When mouse re-enters the source ghost during a move drag, reset target to source position
-  const handleSourceGhostMouseEnter = (module) => {
-    const md = moveDragRef.current
-    if (!md?.isDragging || md.module.id !== module.id) return
-    const next = { ...md, targetRow: module.row, targetPos: module.position, isValid: true }
-    moveDragRef.current = next
-    _setMoveDrag(next)
+    let newCurrent
+    if (position >= drag.anchor) {
+      // Extending right: stop before any occupied slot
+      newCurrent = drag.anchor
+      for (let p = drag.anchor + 1; p <= position; p++) {
+        if (occupied[`${row}-${p}`]) break
+        newCurrent = p
+      }
+    } else {
+      // Extending left: stop before any occupied slot
+      newCurrent = drag.anchor
+      for (let p = drag.anchor - 1; p >= position; p--) {
+        if (occupied[`${row}-${p}`]) break
+        newCurrent = p
+      }
+    }
+    setDrag((d) => ({ ...d, current: newCurrent }))
   }
 
   const handleModuleMouseDown = (e, module) => {
@@ -278,7 +294,6 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
               onSlotMouseDown={handleSlotMouseDown}
               onSlotMouseEnter={handleSlotMouseEnter}
               onModuleMouseDown={handleModuleMouseDown}
-              onSourceGhostMouseEnter={handleSourceGhostMouseEnter}
               onModuleContextMenu={handleModuleContextMenu}
             />
           ))}

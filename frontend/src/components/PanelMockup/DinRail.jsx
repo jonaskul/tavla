@@ -12,7 +12,6 @@ export default function DinRail({
   onSlotMouseDown,
   onSlotMouseEnter,
   onModuleMouseDown,
-  onSourceGhostMouseEnter,
   onModuleContextMenu,
 }) {
   const { byKey } = useModuleTypes()
@@ -30,11 +29,18 @@ export default function DinRail({
     }
   }
 
+  // Create-drag highlight: bidirectional (anchor can be > or < current)
+  const selLo = drag ? Math.min(drag.anchor, drag.current) : -1
+  const selHi = drag ? Math.max(drag.anchor, drag.current) : -1
+  const selWidth = drag ? selHi - selLo + 1 : 0
+  const selMid = drag ? Math.round((selLo + selHi) / 2) : -1
+
   const isCreateHighlight = (position) => {
     if (!drag || drag.row !== railIndex) return false
-    return position >= drag.start && position <= drag.current
+    return position >= selLo && position <= selHi
   }
 
+  // Move-drag: target slot highlight
   const isMoveTarget = (position) => {
     if (!moveDrag?.isDragging || moveDrag.targetRow !== railIndex || moveDrag.targetPos === null) return false
     return position >= moveDrag.targetPos && position < moveDrag.targetPos + moveDrag.module.width
@@ -64,6 +70,8 @@ export default function DinRail({
                 <div
                   key={slot.module.id}
                   data-testid="source-ghost"
+                  data-slot-row={railIndex}
+                  data-slot-pos={slot.module.position}
                   style={{
                     width: slotPx(slot.module.width),
                     height: 64,
@@ -72,7 +80,6 @@ export default function DinRail({
                     opacity: 0.4,
                     flexShrink: 0,
                   }}
-                  onMouseEnter={() => onSourceGhostMouseEnter(slot.module)}
                 />
               )
             }
@@ -95,18 +102,27 @@ export default function DinRail({
           const moveValid = moveDrag?.isValid
 
           let cls = 'bg-gray-100 border-gray-300 hover:bg-gray-200'
-          if (activeCreate) cls = 'bg-blue-200 border-blue-400'
-          else if (activeMove && moveValid)  cls = 'bg-green-200 border-green-400'
-          else if (activeMove && !moveValid) cls = 'bg-red-200 border-red-400'
+          if (activeCreate)                    cls = 'bg-blue-200 border-blue-400'
+          else if (activeMove && moveValid)    cls = 'bg-green-200 border-green-400'
+          else if (activeMove && !moveValid)   cls = 'bg-red-200 border-red-400'
 
           return (
             <div
               key={`empty-${position}`}
               data-testid={activeCreate || activeMove ? 'highlighted-slot' : 'empty-slot'}
-              className={`w-8 h-16 rounded border cursor-pointer transition-colors select-none ${cls}`}
+              data-slot-row={railIndex}
+              data-slot-pos={position}
+              className={`w-8 h-16 rounded border cursor-pointer transition-colors select-none flex items-center justify-center ${cls}`}
               onMouseDown={() => onSlotMouseDown(railIndex, position)}
               onMouseEnter={() => onSlotMouseEnter(railIndex, position)}
-            />
+            >
+              {/* Show selection width in the middle highlighted slot */}
+              {activeCreate && position === selMid && selWidth > 1 && (
+                <span className="text-blue-700 font-bold text-xs pointer-events-none">
+                  {selWidth}
+                </span>
+              )}
+            </div>
           )
         })}
       </div>
