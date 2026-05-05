@@ -121,6 +121,7 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
       </div>
 
       <ModuleDialog
+        key={dialog ? (dialog.module?.id ?? `new-${dialog.row}-${dialog.position}`) : 'closed'}
         open={!!dialog}
         module={dialog?.module}
         circuits={circuits}

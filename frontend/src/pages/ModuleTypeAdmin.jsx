@@ -363,6 +363,7 @@ export default function ModuleTypeAdmin() {
       </div>
 
       <TypeDialog
+        key={dialog.open ? (dialog.item?.id ?? 'new') : 'closed'}
         open={dialog.open}
         initial={dialog.item}
         onSave={handleSave}
