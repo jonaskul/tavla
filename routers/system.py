@@ -19,6 +19,7 @@ _IN_VENV = sys.prefix != sys.base_prefix
 _PIP_CMD = [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"]
 if not _IN_VENV:
     _PIP_CMD.append("--break-system-packages")
+_ALEMBIC_CMD = [sys.executable, "-m", "alembic", "upgrade", "head"]
 
 
 def _run(*args, timeout=30, cwd=None):
@@ -112,7 +113,7 @@ _UPDATE_STEPS = [
     ("pulling",      ["git", "pull"]),
     ("dependencies", _PIP_CMD),
     ("frontend",     ["npm", "run", "build", "--prefix", "frontend"]),
-    ("migrations",   ["alembic", "upgrade", "head"]),
+    ("migrations",   _ALEMBIC_CMD),
     ("restarting",   ["systemctl", "restart", "tavla-backend"]),
 ]
 
