@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Panel housing -->
+  <rect width="32" height="32" rx="5" fill="#1e293b"/>
+
+  <!-- Row 1: three breakers (blue 2-wide, red 1-wide, green 1-wide) -->
+  <rect x="3"  y="4" width="8" height="10" rx="2" fill="#2563eb"/>
+  <rect x="13" y="4" width="7" height="10" rx="2" fill="#dc2626"/>
+  <rect x="22" y="4" width="7" height="10" rx="2" fill="#16a34a"/>
+
+  <!-- DIN rail between rows -->
+  <rect x="2" y="15.5" width="28" height="2" rx="1" fill="#475569"/>
+
+  <!-- Row 2: purple 2-wide + cyan 1-wide -->
+  <rect x="3"  y="18" width="12" height="10" rx="2" fill="#7c3aed"/>
+  <rect x="17" y="18" width="12" height="10" rx="2" fill="#0ea5e9"/>
+</svg>
