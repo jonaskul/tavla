@@ -31,6 +31,15 @@ def _is_systemd_managed() -> bool:
     return rc == 0
 
 
+def _upstream() -> str:
+    """Return the remote-tracking ref for the current branch (e.g. origin/feature/fase4)."""
+    rc, ref = _run("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", timeout=5)
+    if rc == 0 and ref.strip():
+        return ref.strip()
+    _, branch = _run("git", "rev-parse", "--abbrev-ref", "HEAD", timeout=5)
+    return f"origin/{branch.strip()}"
+
+
 # ── Status ────────────────────────────────────────────────────────────────────
 
 @router.get("/status")
@@ -55,7 +64,7 @@ def check_update():
     if rc != 0:
         raise HTTPException(status_code=503, detail=out or "Kunne ikke nå GitHub")
 
-    _, log = _run("git", "log", "HEAD..origin/main", "--format=%h|%s|%ci")
+    _, log = _run("git", "log", f"HEAD..{_upstream()}", "--format=%h|%s|%ci")
 
     commits = []
     for line in log.splitlines():
@@ -78,7 +87,7 @@ def check_update():
 @router.get("/pending")
 def get_pending():
     """Fast local check using last-fetched state — no network call."""
-    _, log = _run("git", "log", "HEAD..origin/main", "--oneline")
+    _, log = _run("git", "log", f"HEAD..{_upstream()}", "--oneline")
     count = sum(1 for l in log.splitlines() if l.strip())
     return {"updates_available": count > 0}
 
@@ -92,7 +101,7 @@ def trigger_update():
 
 _UPDATE_STEPS = [
     ("fetching",     ["git", "fetch", "origin"]),
-    ("pulling",      ["git", "pull", "origin", "main"]),
+    ("pulling",      ["git", "pull"]),
     ("dependencies", ["pip", "install", "-r", "requirements.txt"]),
     ("frontend",     ["npm", "run", "build", "--prefix", "frontend"]),
     ("migrations",   ["alembic", "upgrade", "head"]),
