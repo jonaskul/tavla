@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { t } from '../i18n/no'
 
-const empty = { name: '', location: '', rows: 1, modules_per_row: 12, notes: '' }
+const empty = { name: '', location: '', rows: 1, modules_per_row: 24, notes: '' }
+
+const QUICK_SIZES = [24, 36, 48]
 
 export default function PanelDialog({ open, initial, onSave, onClose }) {
   const [form, setForm] = useState(empty)
@@ -15,7 +17,7 @@ export default function PanelDialog({ open, initial, onSave, onClose }) {
               name: initial.name ?? '',
               location: initial.location ?? '',
               rows: initial.rows ?? 1,
-              modules_per_row: initial.modules_per_row ?? 12,
+              modules_per_row: initial.modules_per_row ?? 24,
               notes: initial.notes ?? '',
             }
           : empty
@@ -96,18 +98,35 @@ export default function PanelDialog({ open, initial, onSave, onClose }) {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {t.panel.modulesPerRow}
               </label>
-              <input
-                type="number"
-                min="1"
-                max="36"
-                value={form.modules_per_row}
-                onChange={setNum('modules_per_row')}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex items-center gap-2 flex-wrap">
+                {QUICK_SIZES.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, modules_per_row: n }))}
+                    className={`px-3 py-1.5 text-sm rounded-md border font-medium ${
+                      form.modules_per_row === n
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  min="6"
+                  max="96"
+                  value={form.modules_per_row}
+                  onChange={setNum('modules_per_row')}
+                  className="w-20 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">{t.panel.modulesPerRowHint}</p>
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">

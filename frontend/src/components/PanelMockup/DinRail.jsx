@@ -36,9 +36,12 @@ export default function DinRail({
   return (
     <div className="flex items-center gap-3">
       {/* Rail label */}
-      <div className="w-20 text-right shrink-0">
+      <div className="w-24 text-right shrink-0">
         <p className="text-xs font-medium text-gray-600">
           {t.panel.rail} {railIndex + 1}
+        </p>
+        <p className="text-[10px] text-gray-400">
+          {modulesPerRow} mod. — ca. {Math.floor(modulesPerRow / 2)} sikr.
         </p>
         <p className="text-[10px] text-gray-400">
           {emptyCount} {t.panel.emptySlots}

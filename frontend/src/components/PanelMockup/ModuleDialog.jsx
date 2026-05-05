@@ -17,7 +17,7 @@ function getDefaultWidth(typeKey, types) {
   if (typeKey in DEFAULT_WIDTHS) return DEFAULT_WIDTHS[typeKey]
   const typeDef = types.find((t) => t.key === typeKey)
   if (!typeDef) return 1
-  return typeDef.can_have_circuit ? 2 : 1
+  return typeDef.can_have_ampere ? 2 : 1
 }
 
 export default function ModuleDialog({
@@ -139,11 +139,12 @@ export default function ModuleDialog({
               data-testid="field-width"
               type="number"
               min="1"
-              max="24"
+              max="96"
               value={form.width}
               onChange={handleWidthChange}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
             />
+            <p className="text-xs text-gray-400 mt-1">{t.module.widthHint}</p>
           </div>
 
           {/* Ampere */}
