@@ -54,7 +54,7 @@ def _upstream() -> str:
 def get_status():
     _, commit = _run("git", "rev-parse", "--short", "HEAD")
     _, branch = _run("git", "rev-parse", "--abbrev-ref", "HEAD")
-    _, log_line = _run("git", "log", "-1", "--format=%ci|%s")
+    _, log_line = _run("git", "log", "-1", "--format=%cd|%s", "--date=format-local:%Y-%m-%d %H:%M")
     date, _, message = log_line.partition("|")
     return {
         "current_commit": commit,
