@@ -40,7 +40,7 @@ export default function ModuleDialog({
     is_vacant:  existing?.is_vacant  ?? false,
     width:      existing?.width      ?? initialWidth,
   })
-  const [widthTouched, setWidthTouched] = useState(false)
+  const [widthTouched, setWidthTouched] = useState(!!existing || initialWidth > 1)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
