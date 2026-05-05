@@ -2,9 +2,28 @@ import { useState, useEffect } from 'react'
 import { t } from '../../i18n/no'
 import { useModuleTypes } from '../../contexts/ModuleTypesContext'
 
+const DEFAULT_WIDTHS = {
+  breaker: 2,
+  rcd: 2,
+  rcd_breaker: 4,
+  shelly: 1,
+  dynalite: 1,
+  surge_protection: 2,
+  main_switch: 3,
+  other: 1,
+}
+
+function getDefaultWidth(typeKey, types) {
+  if (typeKey in DEFAULT_WIDTHS) return DEFAULT_WIDTHS[typeKey]
+  const typeDef = types.find((t) => t.key === typeKey)
+  if (!typeDef) return 1
+  return typeDef.can_have_circuit ? 2 : 1
+}
+
 export default function ModuleDialog({
   open,
   module: existing,
+  initialWidth = 1,
   circuits,
   onSave,
   onDelete,
@@ -19,7 +38,9 @@ export default function ModuleDialog({
     circuit_id: existing?.circuit_id ?? '',
     has_rcd:    existing?.has_rcd    ?? false,
     is_vacant:  existing?.is_vacant  ?? false,
+    width:      existing?.width      ?? initialWidth,
   })
+  const [widthTouched, setWidthTouched] = useState(false)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
@@ -44,6 +65,22 @@ export default function ModuleDialog({
     setForm((f) => ({ ...f, [key]: e.target.checked }))
   }
 
+  const handleTypeChange = (e) => {
+    const newType = e.target.value
+    setForm((f) => ({
+      ...f,
+      type: newType,
+      width: widthTouched ? f.width : getDefaultWidth(newType, types),
+    }))
+    setErrors((er) => ({ ...er, type: undefined }))
+  }
+
+  const handleWidthChange = (e) => {
+    setWidthTouched(true)
+    setForm((f) => ({ ...f, width: e.target.value }))
+    setErrors((er) => ({ ...er, width: undefined }))
+  }
+
   const handleSave = () => {
     const newErrors = {}
     if (!form.type) newErrors.type = t.module.typeRequired
@@ -56,6 +93,7 @@ export default function ModuleDialog({
       has_rcd:    form.has_rcd,
       circuit_id: showCircuit && form.circuit_id !== '' ? Number(form.circuit_id) : null,
       is_vacant:  form.is_vacant,
+      width:      Math.max(1, Number(form.width) || 1),
     })
   }
 
@@ -78,7 +116,7 @@ export default function ModuleDialog({
               id="mod-type"
               data-testid="field-type"
               value={form.type}
-              onChange={set('type')}
+              onChange={handleTypeChange}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
             >
               <option value="">— Velg type —</option>
@@ -89,6 +127,23 @@ export default function ModuleDialog({
             {errors.type && (
               <p className="text-red-500 text-xs mt-1">{errors.type}</p>
             )}
+          </div>
+
+          {/* Width */}
+          <div>
+            <label htmlFor="mod-width" className="block text-sm font-medium text-gray-700 mb-1">
+              {t.module.width}
+            </label>
+            <input
+              id="mod-width"
+              data-testid="field-width"
+              type="number"
+              min="1"
+              max="24"
+              value={form.width}
+              onChange={handleWidthChange}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            />
           </div>
 
           {/* Ampere */}

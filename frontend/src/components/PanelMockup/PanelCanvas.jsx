@@ -85,7 +85,7 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
 
   const handleSave = (formData) => {
     if (dialog.mode === 'create') {
-      createMut.mutate({ row: dialog.row, position: dialog.position, width: dialog.width, ...formData })
+      createMut.mutate({ row: dialog.row, position: dialog.position, ...formData })
     } else {
       updateMut.mutate({ id: dialog.module.id, data: formData })
     }
@@ -124,6 +124,7 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
         key={dialog ? (dialog.module?.id ?? `new-${dialog.row}-${dialog.position}`) : 'closed'}
         open={!!dialog}
         module={dialog?.module}
+        initialWidth={dialog?.width ?? 1}
         circuits={circuits}
         onSave={handleSave}
         onDelete={dialog?.mode === 'edit' ? handleDelete : undefined}
