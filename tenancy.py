@@ -194,6 +194,14 @@ PUBLIC_PATHS = frozenset({
     "/docs",
     "/redoc",
     "/openapi.json",
+    # Signing in cannot require being signed in. These four are the entire
+    # unauthenticated surface, and each guards itself: request-code answers
+    # identically whatever the address, verify is rate limited and constant
+    # time, logout is idempotent, and me returns 401 on its own.
+    "/api/auth/request-code",
+    "/api/auth/verify",
+    "/api/auth/logout",
+    "/api/auth/me",
 })
 
 

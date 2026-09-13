@@ -13,6 +13,17 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def as_utc(value: datetime) -> datetime:
+    """Read a stored timestamp as UTC.
+
+    SQLite has no timezone type, so a value written as aware comes back
+    naive, and comparing it to utcnow() raises TypeError rather than
+    returning a wrong answer. Every comparison against a stored timestamp
+    goes through here so it behaves the same on both databases.
+    """
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
 # Child rows a parent owns outright — deleting the parent deletes them.
 # Independent records (panels, circuits, connection points, equipment, files)
 # deliberately have NO cascade: their delete endpoints block with 409 instead,
@@ -325,3 +336,49 @@ TENANT_MODELS = (
     Property, Panel, Module, Circuit, ConnectionPoint,
     Equipment, File, ChangeLog, Channel,
 )
+
+
+# --- Authentication ---
+#
+# Passwordless one-time codes. No password hashes, no reset tokens.
+#
+# Neither table is tenant-scoped: they exist to establish who someone is,
+# which necessarily happens before an organization is known. They carry no
+# customer content — only an email address and opaque token hashes.
+
+class LoginCode(SQLModel, table=True):
+    __tablename__ = "logincode"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(index=True)
+    # HMAC with a server-side secret, not a bare hash. Six digits is a
+    # million possibilities, so a plain SHA-256 of it would be reversible
+    # by brute force the moment the database leaked. The secret is not in
+    # the database, so a dump alone is not enough.
+    code_hash: str
+    expires_at: datetime
+    used_at: Optional[datetime] = None
+    # Wrong guesses. A six-digit code needs a ceiling or it is guessable
+    # long before it expires.
+    attempts: int = Field(default=0)
+    requested_ip: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class UserSession(SQLModel, table=True):
+    __tablename__ = "usersession"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="app_user.id", index=True)
+    # The token is high-entropy, so a plain hash is enough here — unlike the
+    # six-digit code above. Hashed so a database dump cannot be replayed as
+    # a live session.
+    token_hash: str = Field(unique=True, index=True)
+    expires_at: datetime
+    # Server-side sessions rather than a JWT, so signing out takes effect
+    # immediately. A JWT stays valid until it expires, which is the wrong
+    # answer when someone reports a lost phone.
+    revoked_at: Optional[datetime] = None
+    last_seen_at: datetime = Field(default_factory=utcnow)
+    user_agent: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow)

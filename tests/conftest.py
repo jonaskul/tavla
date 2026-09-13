@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine
 
+from auth import set_authenticator, single_user_authenticator
 from database import get_session
 from main import app
 from routers.module_types import seed_builtin_types
@@ -77,9 +78,16 @@ def client_fixture(db_engine):
         with Session(db_engine) as session:
             yield session
 
+    # Signed in as the install's only user unless a test says otherwise.
+    # Production defaults to real login instead, so that a deployment which
+    # configures nothing ends up closed rather than open; tests state the
+    # mode they want rather than inheriting it.
+    set_authenticator(single_user_authenticator)
+
     app.dependency_overrides[get_session] = get_test_session
     yield TestClient(app)
     app.dependency_overrides.clear()
+    set_authenticator(single_user_authenticator)
 
 
 @pytest.fixture
