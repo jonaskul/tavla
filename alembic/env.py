@@ -14,6 +14,14 @@ import models  # noqa: F401 — registers all table models
 
 config = context.config
 
+# Migrations must target the same database the app uses, or a production
+# upgrade silently runs against the local SQLite default in alembic.ini.
+# Order matters: a caller driving alembic programmatically (the test suite)
+# wins over the environment, which wins over the ini file.
+_url = config.attributes.get("sqlalchemy.url") or os.getenv("DATABASE_URL")
+if _url:
+    config.set_main_option("sqlalchemy.url", _url)
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

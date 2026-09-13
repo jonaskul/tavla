@@ -1,25 +1,71 @@
+import os
+from pathlib import Path
+
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine
 
 from database import get_session
 from main import app
 from routers.module_types import seed_builtin_types
-from tenancy import ensure_default_organization
+from tenancy import bind_organization, ensure_default_organization
+
+
+# Set TEST_DATABASE_URL to run the whole suite against PostgreSQL instead of
+# SQLite, which is the only way to exercise the row-level security policies:
+#
+#   TEST_DATABASE_URL=postgresql+psycopg://tavla_app:pw@localhost/tavla_test \
+#       python -m pytest
+#
+# Without it the suite uses in-memory SQLite, so a plain checkout needs no
+# services running. SQLite has no RLS, so those runs cover the application
+# scoping only.
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+
+_TABLES_NEWEST_FIRST = [t.name for t in reversed(SQLModel.metadata.sorted_tables)]
+
+
+@pytest.fixture(scope="session")
+def _migrated_engine():
+    """PostgreSQL only: migrate once for the whole run, including RLS."""
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+    cfg = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
+    # attributes, not set_main_option: env.py treats this as the caller's
+    # explicit choice and will not override it from the environment.
+    cfg.attributes["sqlalchemy.url"] = TEST_DATABASE_URL
+    command.upgrade(cfg, "head")
+    return engine
 
 
 @pytest.fixture(name="db_engine")
-def db_engine_fixture():
-    """A fresh in-memory database, seeded the way a new install would be."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
+def db_engine_fixture(request):
+    """A database seeded the way a new install would be."""
+    if TEST_DATABASE_URL:
+        engine = request.getfixturevalue("_migrated_engine")
+        # Re-migrating per test would be far too slow, so empty the tables
+        # instead. TRUNCATE is not filtered by the RLS policies, so this
+        # clears every tenant's rows regardless of the current setting.
+        with engine.begin() as conn:
+            conn.execute(
+                text("TRUNCATE " + ", ".join(_TABLES_NEWEST_FIRST) + " RESTART IDENTITY CASCADE")
+            )
+    else:
+        engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        SQLModel.metadata.create_all(engine)
+
     with Session(engine) as session:
-        ensure_default_organization(session)
+        org = ensure_default_organization(session)
+        # Seeding writes the shared built-in types, which the RLS policy on
+        # moduletypedefinition admits because their organization_id is NULL.
+        bind_organization(session, org.id)
         seed_builtin_types(session)
     return engine
 

@@ -44,12 +44,50 @@ SESSION_KEY = "organization_id"
 DEFAULT_ORG_NAME = "Standard"
 
 
+RLS_SETTING = "app.organization_id"
+_SET_RLS = f"SELECT set_config('{RLS_SETTING}', %s, true)"
+
+
 def session_organization(session: Session) -> Optional[int]:
     return session.info.get(SESSION_KEY)
 
 
+def _tell_postgres(connection, org_id: int) -> None:
+    """Publish the acting organization to the row-level security policies.
+
+    set_config(..., true) is transaction-local, so it cannot leak to the next
+    request that borrows this pooled connection. The cost is that it has to be
+    re-applied after every commit — see the after_begin listener.
+    """
+    if connection.dialect.name != "postgresql":
+        return
+    connection.exec_driver_sql(_SET_RLS, (str(org_id),))
+
+
 def bind_organization(session: Session, org_id: Optional[int]) -> None:
     session.info[SESSION_KEY] = org_id
+    if org_id is None:
+        return
+    # A transaction is usually already open by now — the query that looked the
+    # organization up started one, and after_begin fired before we knew the
+    # answer. Apply to that transaction as well, or the rest of this request
+    # would see nothing.
+    if session.in_transaction():
+        _tell_postgres(session.connection(), org_id)
+
+
+@event.listens_for(Session, "after_begin")
+def _reapply_on_new_transaction(session, transaction, connection):
+    """Re-publish the organization when a new transaction starts.
+
+    Several endpoints commit more than once per request (create_equipment
+    commits three times). Each commit ends the transaction and with it the
+    local setting, so without this the statements after the first commit
+    would match no rows.
+    """
+    org_id = session_organization(session)
+    if org_id is not None:
+        _tell_postgres(connection, org_id)
 
 
 def ensure_default_organization(session: Session) -> Organization:
