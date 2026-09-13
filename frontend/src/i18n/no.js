@@ -109,7 +109,7 @@ export const t = {
     designationRequired: "Kursbetegnelse er påkrevd",
     nameRequired: "Navn er påkrevd",
     deleteConfirm: "Er du sikker på at du vil slette kursen? Dette kan ikke angres.",
-    cannotDeleteHasConnectionPoints: "Kan ikke slette kurs som har koblingspunkter. Slett koblingspunktene først.",
+    cannotDeleteHasConnectionPoints: "Kan ikke slette kurs som har koblingspunkter eller fastmontert utstyr. Slett disse først.",
     deleteError: "Kunne ikke slette kursen.",
   },
 
