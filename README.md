@@ -94,11 +94,16 @@ avgjør «samme nettsted» ut fra registrerbart domene:
 
 | Frontend | API | Virker med Lax? |
 |---|---|---|
-| `app.tavla.no` | `api.tavla.no` | ✅ samme nettsted |
+| `tavla.digibygg.io` | `tavla.digibygg.io/api` | ✅ samme opphav — ingen CORS |
+| `tavla.digibygg.io` | `api.tavla.digibygg.io` | ✅ samme nettsted |
 | `tavla.pages.dev` | `tavla.fly.dev` | ❌ ulike nettsteder |
 
 **Legg begge under ett domene.** Gjør du ikke det, må `COOKIE_SAMESITE=none`,
 og da mister du CSRF-beskyttelsen Lax ga deg.
+
+Enkleste variant er øverste rad: server API-et under samme vert som
+frontenden, så finnes det ingen cross-origin-forespørsel å konfigurere. La
+da `CORS_ORIGINS` stå tom.
 
 ### Steg
 

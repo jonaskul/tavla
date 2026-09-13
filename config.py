@@ -29,14 +29,15 @@ CORS_ORIGINS: List[str] = (
 #
 # SameSite is the one that catches people out. "lax" is the right default and
 # is what protects the mutating endpoints from cross-site requests, but the
-# browser decides "same site" by registrable domain: tavla.no and
-# api.tavla.no are the same site, tavla.pages.dev and tavla.fly.dev are not.
-# Serve the app and the API under one domain and this stays "lax". If they
-# must live on separate domains, this has to become "none", which requires
-# Secure and gives up the CSRF protection that Lax was providing.
+# browser decides "same site" by registrable domain, not by host. Everything
+# under digibygg.io is therefore the same site — tavla.digibygg.io and
+# api.tavla.digibygg.io included — and this stays "lax". Only a split across
+# unrelated domains (pages.dev and fly.dev, say) would force "none", which
+# requires Secure and gives up the CSRF protection Lax was providing.
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "1") != "0"
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").lower()
-# Set to ".tavla.no" to share the session across subdomains.
+# Leave unset. Host-only means the cookie goes back only to the host that
+# set it; a value here would hand it to every subdomain of digibygg.io.
 COOKIE_DOMAIN: Optional[str] = os.getenv("COOKIE_DOMAIN") or None
 
 # Keys the sign-in codes and sessions are derived from. Without it a random
@@ -83,8 +84,6 @@ def validate() -> List[str]:
     missing = []
     if not SESSION_SECRET:
         missing.append("SESSION_SECRET")
-    if not CORS_ORIGINS:
-        missing.append("CORS_ORIGINS")
     if not SINGLE_USER_MODE:
         # Without these nobody can sign in at all, which is worse than
         # failing to start.
@@ -96,6 +95,18 @@ def validate() -> List[str]:
     if missing:
         raise ConfigError(
             "Mangler i produksjonskonfigurasjon: " + ", ".join(missing)
+        )
+
+    if not CORS_ORIGINS:
+        # Legitimate when the API is served under the same origin as the
+        # frontend, which is the simplest deployment and needs no CORS at
+        # all. Refusing to start would block that. Empty also fails in the
+        # safe direction — nothing is allowed rather than a stale dev origin
+        # slipping through — and a frontend that cannot reach the API is
+        # obvious immediately, unlike the quiet misconfigurations above.
+        warnings.append(
+            "CORS_ORIGINS er tom. Riktig hvis API-et serveres under samme "
+            "opphav som frontenden; ellers når ikke nettleseren API-et."
         )
 
     if DATABASE_URL.startswith("sqlite"):

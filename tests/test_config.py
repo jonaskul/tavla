@@ -61,7 +61,7 @@ def test_a_complete_production_config_starts_clean(monkeypatch):
 
 @pytest.mark.parametrize(
     "missing",
-    ["SESSION_SECRET", "CORS_ORIGINS", "RESEND_API_KEY", "AUTH_FROM_EMAIL"],
+    ["SESSION_SECRET", "RESEND_API_KEY", "AUTH_FROM_EMAIL"],
 )
 def test_production_refuses_to_start_without(monkeypatch, missing):
     env = {k: v for k, v in PRODUCTION.items() if k != missing}
@@ -118,6 +118,17 @@ def test_production_has_no_default_origin(monkeypatch):
     env = {k: v for k, v in PRODUCTION.items() if k != "CORS_ORIGINS"}
     cfg = load(monkeypatch, **env)
     assert cfg.CORS_ORIGINS == []
+
+
+def test_no_origins_is_allowed_but_noted(monkeypatch):
+    """Serving the API under the frontend's own origin needs no CORS at all.
+
+    Requiring it would have blocked the simplest deployment there is.
+    """
+    env = {k: v for k, v in PRODUCTION.items() if k != "CORS_ORIGINS"}
+    cfg = load(monkeypatch, **env)
+    warnings = cfg.validate()  # must not raise
+    assert any("CORS_ORIGINS" in w for w in warnings)
 
 
 def test_authentication_is_on_unless_explicitly_turned_off(monkeypatch):
