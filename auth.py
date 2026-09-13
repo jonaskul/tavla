@@ -37,11 +37,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_USER_EMAIL = "lokal@tavla.local"
 
-# Self-hosted single-user installs opt out of login with AUTH_MODE=single_user.
-# The default is real authentication: a deployment that forgets to configure
-# anything must end up closed, not open.
-SINGLE_USER_MODE = "single_user"
-
 
 @dataclass(frozen=True)
 class Principal:
@@ -149,7 +144,9 @@ def current_principal(
 
 
 def single_user_mode() -> bool:
-    return os.getenv("AUTH_MODE", "session") == SINGLE_USER_MODE
+    """Whether login is switched off. config is the one place that decides."""
+    import config
+    return config.SINGLE_USER_MODE
 
 
 def configure_authentication() -> None:

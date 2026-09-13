@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import logging
 import os
 
 from database import create_db_and_tables, engine
@@ -9,14 +9,33 @@ from routers import properties, panels, circuits, connection_points, equipment, 
 from routers import auth as auth_router
 from routers.files import UPLOAD_DIR
 from routers.module_types import seed_builtin_types
+import config
 import mail
 from auth import configure_authentication, single_user_mode
 from tenancy import bootstrap_single_user_install, guard_request
 from sqlmodel import Session
 
 
+logging.basicConfig(
+    level=config.LOG_LEVEL,
+    format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
+)
+logger = logging.getLogger("tavla")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Refuses to start a production deployment that cannot work, rather than
+    # starting one that misbehaves quietly.
+    for warning in config.validate():
+        logger.warning(warning)
+    logger.info(
+        "Tavla starter — miljø=%s, database=%s, auth=%s",
+        config.TAVLA_ENV,
+        "postgresql" if not config.DATABASE_URL.startswith("sqlite") else "sqlite",
+        config.AUTH_MODE,
+    )
+
     create_db_and_tables()
     configure_authentication()
     mail.configure_mailer()
@@ -44,9 +63,11 @@ app = FastAPI(
     dependencies=[Depends(guard_request)],
 )
 
+# The session is a cookie, so allow_credentials is required and the origins
+# cannot be a wildcard — browsers refuse that combination.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

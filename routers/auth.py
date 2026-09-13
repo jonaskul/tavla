@@ -29,6 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr
 from sqlmodel import Session, select
 
+import config
 import mail
 from auth import Principal, current_principal
 from database import get_session
@@ -56,35 +57,12 @@ SESSION_TTL = timedelta(days=30)
 NEUTRAL_REPLY = {"ok": True, "detail": "Hvis adressen er gyldig, er en kode sendt."}
 
 
-def _secret() -> bytes:
-    """Key for the code HMAC.
-
-    Without SESSION_SECRET a random one is generated per process: codes
-    then stop working across a restart, which is an inconvenience in
-    development and impossible in production, where the variable must be
-    set. Failing that way round is deliberate — the alternative is a
-    hard-coded default that silently ships.
-    """
-    configured = os.getenv("SESSION_SECRET")
-    if configured:
-        return configured.encode()
-    global _EPHEMERAL_SECRET
-    if _EPHEMERAL_SECRET is None:
-        _EPHEMERAL_SECRET = secrets.token_bytes(32)
-        logger.warning(
-            "SESSION_SECRET er ikke satt — bruker en tilfeldig nøkkel som "
-            "forsvinner ved omstart. Sett den i produksjon."
-        )
-    return _EPHEMERAL_SECRET
-
-
-_EPHEMERAL_SECRET: Optional[bytes] = None
-
-
 def _hash_code(email: str, code: str) -> str:
     """HMAC, not a bare hash: six digits is a million possibilities, so a
     plain SHA-256 would be reversible by brute force from a database dump."""
-    return hmac.new(_secret(), f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
+    return hmac.new(
+        config.session_secret_bytes(), f"{email}:{code}".encode(), hashlib.sha256
+    ).hexdigest()
 
 
 def _hash_token(token: str) -> str:
@@ -255,8 +233,12 @@ def verify_code(
         token,
         max_age=int(SESSION_TTL.total_seconds()),
         httponly=True,  # unreadable from JavaScript, so XSS cannot lift it
-        secure=os.getenv("COOKIE_SECURE", "1") != "0",
-        samesite="lax",  # blocks cross-site POST, which is the CSRF case here
+        secure=config.COOKIE_SECURE,
+        # "lax" blocks cross-site POST, which is the CSRF case here. See
+        # config.py for why serving the app and API under one domain is what
+        # keeps it able to stay "lax".
+        samesite=config.COOKIE_SAMESITE,
+        domain=config.COOKIE_DOMAIN,
         path="/",
     )
     return {"id": user.id, "email": user.email, "name": user.name}
@@ -275,7 +257,7 @@ def logout(
             row.revoked_at = utcnow()
             session.add(row)
             session.commit()
-    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(SESSION_COOKIE, path="/", domain=config.COOKIE_DOMAIN)
     return {"ok": True}
 
 

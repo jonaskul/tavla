@@ -14,6 +14,7 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, select
 
+import config
 import mail
 from auth import session_cookie_authenticator, set_authenticator, single_user_authenticator
 from models import LoginCode, Membership, Organization, User, UserSession, utcnow
@@ -36,8 +37,12 @@ def login_client(client, monkeypatch):
     COOKIE_SECURE is turned off because TestClient speaks http and would
     otherwise refuse to send a Secure cookie back — the flag is right, the
     transport here is not. A separate test covers the production default.
+
+    Patched on config rather than in the environment: config reads the
+    environment once, at import, because it is a snapshot of how this
+    process was started.
     """
-    monkeypatch.setenv("COOKIE_SECURE", "0")
+    monkeypatch.setattr(config, "COOKIE_SECURE", False)
     set_authenticator(session_cookie_authenticator)
     yield client
     set_authenticator(single_user_authenticator)
@@ -276,7 +281,7 @@ def test_the_session_cookie_carries_the_right_flags(login_client, outbox):
 
 def test_the_cookie_is_secure_by_default(client, outbox, monkeypatch):
     """Only http transport in tests turns this off; production keeps it on."""
-    monkeypatch.delenv("COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "COOKIE_SECURE", True)
     set_authenticator(session_cookie_authenticator)
     try:
         client.post("/api/auth/request-code", json={"email": "ola@example.com"})

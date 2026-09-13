@@ -1,14 +1,6 @@
-import os
-
 from sqlmodel import SQLModel, create_engine, Session
 
-# SQLite stays the default so a local checkout runs with no services to start.
-# Production sets DATABASE_URL to PostgreSQL, which is what row-level security
-# needs — it is the only place tenant isolation cannot be bypassed by a query
-# that forgot its WHERE clause.
-#
-#   postgresql+psycopg://user:password@host:5432/tavla
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tavla.db")
+from config import DATABASE_URL
 
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 
