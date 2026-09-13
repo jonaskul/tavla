@@ -120,8 +120,15 @@ def request_code(
     """
     email = _normalise(data.email)
 
-    if _too_many_requests(session, email, _client_ip(request)):
-        logger.info("Ratebegrenset kodeforespørsel for %s", email)
+    client_ip = _client_ip(request)
+    if _too_many_requests(session, email, client_ip):
+        # The IP is logged because the usual cause of unexpected throttling
+        # is a reverse proxy whose forwarded address is not trusted: then
+        # every caller shares one address and the cap locks out everybody.
+        # Seeing the same IP on every throttle is the tell.
+        logger.info(
+            "Ratebegrenset kodeforespørsel for %s fra %s", email, client_ip
+        )
         return NEUTRAL_REPLY
 
     code = f"{secrets.randbelow(1_000_000):06d}"
@@ -129,7 +136,7 @@ def request_code(
         email=email,
         code_hash=_hash_code(email, code),
         expires_at=utcnow() + CODE_TTL,
-        requested_ip=_client_ip(request),
+        requested_ip=client_ip,
     ))
     session.commit()
 

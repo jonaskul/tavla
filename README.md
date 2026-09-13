@@ -105,6 +105,23 @@ Enkleste variant er øverste rad: server API-et under samme vert som
 frontenden, så finnes det ingen cross-origin-forespørsel å konfigurere. La
 da `CORS_ORIGINS` stå tom.
 
+### Oppsett: ett opphav
+
+`deploy/nginx.conf` serverer frontenden og proxyer `/api` til API-et på
+samme vert. Da finnes det ingen cross-origin-forespørsel, `CORS_ORIGINS`
+kan stå tom, og sesjonscookien blir på `SameSite=Lax`.
+
+Den konfigurasjonen tar også to ting appen ikke gjør selv: den avviser for
+store opplastinger før de når Python (som leser hele forespørselen i minnet
+*før* den sjekker størrelsen), og den setter `nosniff`, som hindrer at en
+opplasting som utgir seg for å være et bilde blir tolket som noe annet.
+
+**Merk `FORWARDED_ALLOW_IPS`.** uvicorn stoler bare på `X-Forwarded-For`
+fra 127.0.0.1 som standard. Kjører API-et i en container, kommer
+forbindelsen fra docker-broen i stedet, headeren forkastes, og alle
+innringere ser ut som proxyen. Da rammer rate-grensen på innlogging alle
+sammen etter ti koder i timen.
+
 ### Steg
 
 1. **Database.** Neon eller Supabase. Appen skal koble til som en rolle som
