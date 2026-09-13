@@ -84,11 +84,22 @@ export default function DinRail({
               )
             }
 
+            // Occupied slots carry the same data attributes as empty ones.
+            // Without them elementsFromPoint finds nothing under the cursor
+            // while dragging across a module, so the drag had no target at
+            // all and the user got no feedback until they let go and it
+            // shook at them.
             return (
-              <div key={slot.module.id} data-testid="occupied-slot">
+              <div
+                key={slot.module.id}
+                data-testid="occupied-slot"
+                data-slot-row={railIndex}
+                data-slot-pos={slot.module.position}
+              >
                 <Module
                   module={slot.module}
                   isShaking={isShaking}
+                  isBlockingTarget={isMoveTarget(slot.module.position)}
                   onMouseDown={(e) => onModuleMouseDown(e, slot.module)}
                   onContextMenu={(e) => onModuleContextMenu(e, slot.module)}
                 />

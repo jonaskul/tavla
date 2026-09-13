@@ -163,3 +163,26 @@ test('modul har riktig farge-klasse per type', async () => {
   await waitFor(() => screen.getByTestId('module-1'))
   expect(screen.getByTestId('module-1')).toHaveClass('module-breaker')
 })
+
+// Found by driving the real UI in a browser: dragging a module across
+// another one gave no feedback at all. Occupied slots rendered as <Module>
+// without the data-slot attributes, so document.elementsFromPoint found
+// nothing under the cursor and the drag had no target — the user only
+// learned the drop was refused after letting go, when it shook.
+test('opptatte plasser er identifiserbare som slippmål', async () => {
+  vi.spyOn(api, 'getPanelModules').mockResolvedValue([
+    { id: 1, row: 0, position: 0, width: 2, type: 'breaker', ampere: 16, label: 'B01' },
+  ])
+  vi.spyOn(api, 'getCircuits').mockResolvedValue([])
+  render(<PanelCanvas panel={mockPanel} />, { wrapper })
+
+  const occupied = await waitFor(() => screen.getByTestId('occupied-slot'))
+  expect(occupied).toHaveAttribute('data-slot-row', '0')
+  expect(occupied).toHaveAttribute('data-slot-pos', '0')
+
+  // Empty slots already carried them; both kinds must, or the lookup that
+  // finds the drop target skips whichever is missing.
+  const empty = screen.getAllByTestId('empty-slot')[0]
+  expect(empty).toHaveAttribute('data-slot-row')
+  expect(empty).toHaveAttribute('data-slot-pos')
+})

@@ -11,7 +11,7 @@ export function hexTextColor(hex) {
 // Each slot is 32px wide with 1px gap → pixel width = width * 33 - 1
 export const slotPx = (width) => width * 33 - 1
 
-export default function Module({ module, isShaking, onMouseDown, onContextMenu }) {
+export default function Module({ module, isShaking, isBlockingTarget, onMouseDown, onContextMenu }) {
   const { byKey } = useModuleTypes()
   const isVacant = module.is_vacant
   const typeDef = byKey[module.type]
@@ -23,7 +23,11 @@ export default function Module({ module, isShaking, onMouseDown, onContextMenu }
   return (
     <div
       data-testid={`module-${module.id}`}
-      className={`${isShaking ? 'shake' : ''} module-${module.type} ${isVacant ? 'module-vacant' : ''} h-16 rounded flex flex-col items-center justify-center cursor-grab select-none px-1 shrink-0`}
+      className={`${isShaking ? 'shake' : ''} module-${module.type} ${isVacant ? 'module-vacant' : ''} ${
+        // The module another one is being dragged onto: say no during the
+        // drag rather than only after the drop.
+        isBlockingTarget ? 'ring-2 ring-red-500 ring-offset-1' : ''
+      } h-16 rounded flex flex-col items-center justify-center cursor-grab select-none px-1 shrink-0`}
       style={{ width: slotPx(module.width), backgroundColor: bgColor, color: textColor }}
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
