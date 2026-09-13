@@ -9,6 +9,7 @@ import {
   uploadEquipmentFile,
 } from '../api/client'
 import { t } from '../i18n/no'
+import { errorMessage } from '../api/errors'
 import EquipmentDialog from './EquipmentDialog'
 import ConfirmDialog from './ConfirmDialog'
 import FileUpload from './FileUpload'
@@ -51,10 +52,9 @@ export default function EquipmentList({ circuitId, panelId }) {
       setDeleteConfirm({ open: false, item: null, error: null })
     },
     onError: (err) => {
-      const status = err.response?.status
       setDeleteConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.equipment.cannotDeleteHasFiles : t.equipment.deleteError,
+        error: errorMessage(err, { 409: t.equipment.cannotDeleteHasFiles }, t.equipment.deleteError),
       }))
     },
   })

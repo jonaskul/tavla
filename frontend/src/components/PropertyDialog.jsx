@@ -41,10 +41,14 @@ export default function PropertyDialog({ open, initial, onSave, onClose }) {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="property-name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               {t.property.name} *
             </label>
             <input
+              id="property-name"
               type="text"
               value={form.name}
               onChange={set('name')}
@@ -54,10 +58,14 @@ export default function PropertyDialog({ open, initial, onSave, onClose }) {
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="property-address"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               {t.property.address} *
             </label>
             <input
+              id="property-address"
               type="text"
               value={form.address}
               onChange={set('address')}

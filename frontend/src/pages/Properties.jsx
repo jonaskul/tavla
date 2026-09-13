@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getProperties, createProperty, updateProperty, deleteProperty } from '../api/client'
 import { t } from '../i18n/no'
+import { errorMessage } from '../api/errors'
 import PropertyDialog from '../components/PropertyDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
 
@@ -39,10 +40,9 @@ export default function Properties() {
       setConfirm({ open: false, item: null, error: null })
     },
     onError: (err) => {
-      const status = err.response?.status
       setConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.property.cannotDeleteHasPanels : t.property.deleteError,
+        error: errorMessage(err, { 409: t.property.cannotDeleteHasPanels }, t.property.deleteError),
       }))
     },
   })

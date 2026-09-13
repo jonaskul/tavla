@@ -2,6 +2,11 @@ import axios from 'axios'
 
 const http = axios.create({
   baseURL: '/api',
+  // The session lives in an HttpOnly cookie. Same-origin in development via
+  // the Vite proxy and in production behind nginx, but the SaaS deployment
+  // serves the frontend and the API from different origins, where the cookie
+  // only travels if this is set.
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 })
 

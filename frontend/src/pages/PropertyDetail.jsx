@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getProperty, updateProperty, deleteProperty, getPanels, createPanel, updatePanel, deletePanel, exportProperty } from '../api/client'
 import { t } from '../i18n/no'
+import { errorMessage } from '../api/errors'
 import PropertyDialog from '../components/PropertyDialog'
 import PanelDialog from '../components/PanelDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -50,10 +51,9 @@ export default function PropertyDetail() {
       navigate('/')
     },
     onError: (err) => {
-      const status = err.response?.status
       setPropDeleteConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.property.cannotDeleteHasPanels : t.property.deleteError,
+        error: errorMessage(err, { 409: t.property.cannotDeleteHasPanels }, t.property.deleteError),
       }))
     },
   })
@@ -81,10 +81,9 @@ export default function PropertyDetail() {
       setPanelDeleteConfirm({ open: false, item: null, error: null })
     },
     onError: (err) => {
-      const status = err.response?.status
       setPanelDeleteConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.panel.cannotDeleteHasCircuits : t.panel.deleteError,
+        error: errorMessage(err, { 409: t.panel.cannotDeleteHasCircuits }, t.panel.deleteError),
       }))
     },
   })

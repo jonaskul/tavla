@@ -283,6 +283,13 @@ export const t = {
     loading: "Laster...",
     confirmDelete: "Er du sikker på at du vil slette?",
     noData: "Ingen data",
+    // Distinguishing these is the point: a crash and a refused action used
+    // to show the same sentence, so the user could not tell whether to
+    // change something or report something.
+    networkError: "Ingen kontakt med serveren. Sjekk nettverket og prøv igjen.",
+    serverError: "Uventet feil på serveren. Prøv igjen, eller meld fra hvis det gjentar seg.",
+    notSignedIn: "Du er ikke logget inn lenger. Logg inn på nytt.",
+    unknownError: "Noe gikk galt.",
     exportPdf: "Eksporter PDF",
     ampere: "Ampere",
     yes: "Ja",

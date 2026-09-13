@@ -262,18 +262,23 @@ export default function PanelCanvas({ panel, onSlotSelect }) {
     if (window.confirm(t.common.confirmDelete)) deleteMut.mutate(module.id)
   }
 
+  // Close on success, not on click. The backend rejects overlaps (409) and
+  // positions past the end of the rail (422); closing first made a refused
+  // module simply never appear, with nothing said about why.
   const handleSave = (formData) => {
+    const onSettled = { onSuccess: () => setDialog(null) }
     if (dialog.mode === 'create') {
-      createMut.mutate({ row: dialog.row, position: dialog.position, ...formData })
+      createMut.mutate(
+        { row: dialog.row, position: dialog.position, ...formData },
+        onSettled,
+      )
     } else {
-      updateMut.mutate({ id: dialog.module.id, data: formData })
+      updateMut.mutate({ id: dialog.module.id, data: formData }, onSettled)
     }
-    setDialog(null)
   }
 
   const handleDelete = () => {
-    deleteMut.mutate(dialog.module.id)
-    setDialog(null)
+    deleteMut.mutate(dialog.module.id, { onSuccess: () => setDialog(null) })
   }
 
   return (

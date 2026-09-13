@@ -12,6 +12,7 @@ import {
   deleteConnectionPoint,
 } from '../api/client'
 import { t } from '../i18n/no'
+import { errorMessage } from '../api/errors'
 import CircuitDialog from '../components/CircuitDialog'
 import ConnectionPointDialog from '../components/ConnectionPointDialog'
 import FileUpload from '../components/FileUpload'
@@ -64,10 +65,9 @@ export default function CircuitDetail() {
       navigate(`/skap/${circuit.panel_id}`)
     },
     onError: (err) => {
-      const status = err.response?.status
       setCircuitDeleteConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.circuit.cannotDeleteHasConnectionPoints : t.circuit.deleteError,
+        error: errorMessage(err, { 409: t.circuit.cannotDeleteHasConnectionPoints }, t.circuit.deleteError),
       }))
     },
   })
@@ -98,10 +98,9 @@ export default function CircuitDetail() {
       setCpDeleteConfirm({ open: false, item: null, error: null })
     },
     onError: (err) => {
-      const status = err.response?.status
       setCpDeleteConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.connectionPoint.cannotDeleteHasFiles : t.connectionPoint.deleteError,
+        error: errorMessage(err, { 409: t.connectionPoint.cannotDeleteHasFiles }, t.connectionPoint.deleteError),
       }))
     },
   })

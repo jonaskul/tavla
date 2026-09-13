@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPanel, updatePanel, deletePanel, getCircuits, createCircuit, updateCircuit, deleteCircuit, getEquipment } from '../api/client'
 import { t } from '../i18n/no'
+import { errorMessage } from '../api/errors'
 import PanelCanvas from '../components/PanelMockup/PanelCanvas'
 import PanelDialog from '../components/PanelDialog'
 import CircuitDialog from '../components/CircuitDialog'
@@ -65,10 +66,9 @@ export default function PanelDetail() {
       navigate(`/anlegg/${panel.property_id}`)
     },
     onError: (err) => {
-      const status = err.response?.status
       setPanelDeleteConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.panel.cannotDeleteHasCircuits : t.panel.deleteError,
+        error: errorMessage(err, { 409: t.panel.cannotDeleteHasCircuits }, t.panel.deleteError),
       }))
     },
   })
@@ -96,10 +96,9 @@ export default function PanelDetail() {
       setCircuitDeleteConfirm({ open: false, item: null, error: null })
     },
     onError: (err) => {
-      const status = err.response?.status
       setCircuitDeleteConfirm((c) => ({
         ...c,
-        error: status === 409 ? t.circuit.cannotDeleteHasConnectionPoints : t.circuit.deleteError,
+        error: errorMessage(err, { 409: t.circuit.cannotDeleteHasConnectionPoints }, t.circuit.deleteError),
       }))
     },
   })
