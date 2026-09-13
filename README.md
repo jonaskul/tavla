@@ -105,6 +105,20 @@ Enkleste variant er øverste rad: server API-et under samme vert som
 frontenden, så finnes det ingen cross-origin-forespørsel å konfigurere. La
 da `CORS_ORIGINS` stå tom.
 
+### Cloudflare foran egen server
+
+Workers kan ikke kjøre denne backenden: datalaget er SQLAlchemy, og D1 nås
+gjennom en binding framfor en databasedriver. D1 har heller ingen row-level
+security, så isolasjonen mellom kunder ville falt tilbake til å huske
+`WHERE`-filteret hver gang — mønsteret som allerede har sviktet to ganger
+her.
+
+Veien til Cloudflare-fordelene uten det tapet er å sette proxyen foran en
+egen origin. TLS, CDN og WAF fra Cloudflare, FastAPI og PostgreSQL bak.
+`deploy/nginx.conf` virker uendret, men les merknaden øverst i den om
+`CF-Connecting-IP` — uten den teller rate-grensen hele internett som én
+innringer.
+
 ### Oppsett: ett opphav
 
 `deploy/nginx.conf` serverer frontenden og proxyer `/api` til API-et på
