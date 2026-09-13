@@ -19,6 +19,18 @@ logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
 
+
+class MailError(RuntimeError):
+    """Sending failed."""
+
+
+class MailNotReached(MailError):
+    """The provider could not be contacted at all — network, DNS, firewall."""
+
+
+class MailRejected(MailError):
+    """The provider answered and refused — key, sender domain, payload."""
+
 # (to, subject, text) -> None
 Mailer = Callable[[str, str, str], None]
 
@@ -40,18 +52,29 @@ class ResendMailer:
         self._timeout = timeout
 
     def __call__(self, to: str, subject: str, text: str) -> None:
-        response = httpx.post(
-            RESEND_API_URL,
-            headers={"Authorization": f"Bearer {self._api_key}"},
-            json={"from": self._sender, "to": [to], "subject": subject, "text": text},
-            timeout=self._timeout,
-        )
+        # Two failures worth telling apart. Not reaching Resend at all is a
+        # network, DNS or firewall problem; being rejected by it is a key,
+        # domain or payload problem. They look identical from the outside
+        # and are debugged in completely different places.
+        try:
+            response = httpx.post(
+                RESEND_API_URL,
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                json={"from": self._sender, "to": [to], "subject": subject, "text": text},
+                timeout=self._timeout,
+            )
+        except httpx.HTTPError as exc:
+            logger.error("Nådde ikke Resend: %s: %s", type(exc).__name__, exc)
+            raise MailNotReached(f"{type(exc).__name__}: {exc}") from exc
+
         if response.status_code >= 400:
-            # Deliberately not including the body in the message the caller
-            # sees: a failure here must not tell an anonymous requester
-            # anything about the address.
-            logger.error("Resend avviste e-post: %s %s", response.status_code, response.text)
-            raise RuntimeError("Kunne ikke sende e-post")
+            # The body goes to the log, not to the caller: a failure here
+            # must not tell an anonymous requester anything about the
+            # address it was asked to send to.
+            logger.error(
+                "Resend avviste e-post: %s %s", response.status_code, response.text
+            )
+            raise MailRejected(f"Resend svarte {response.status_code}")
 
 
 _mailer: Mailer = log_mailer
