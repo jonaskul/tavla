@@ -1,0 +1,24 @@
+name = "tavla"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# The database. Locally this is a file miniflare manages; the real
+# database_id goes here once the D1 instance exists.
+[[d1_databases]]
+binding = "DB"
+database_name = "tavla"
+database_id = "local"
+migrations_dir = "migrations"
+
+# Uploaded photos and PDFs. A binding rather than an S3 client, which is
+# the one place Workers is simpler than the Python side.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "tavla-filer"
+
+[vars]
+TAVLA_ENV = "development"
+AUTH_MODE = "session"
+
+# Secrets are set with `wrangler secret put`, never here:
+#   SESSION_SECRET, RESEND_API_KEY

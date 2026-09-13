@@ -1,0 +1,20 @@
+{
+  "name": "tavla-workers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "db:generate": "drizzle-kit generate",
+    "db:apply": "wrangler d1 migrations apply tavla --local",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.13.7"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.131.1"
+  }
+}
