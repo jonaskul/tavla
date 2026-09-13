@@ -282,10 +282,12 @@ class File(SQLModel, table=True):
     organization_id: int = Field(foreign_key="organization.id", index=True)
     connection_point_id: Optional[int] = Field(default=None, foreign_key="connectionpoint.id")
     equipment_id: Optional[int] = Field(default=None, foreign_key="equipment.id")
-    filename: str
+    filename: str            # what the uploader called it, for display
     mimetype: str
-    local_path: str
-    r2_key: Optional[str] = None    # set after R2 sync
+    # Where the bytes are in the store. Was a filesystem path plus an r2_key
+    # that nothing ever set; one key works for both backends and cannot
+    # drift out of step with itself.
+    storage_key: str
     uploaded_at: datetime = Field(default_factory=utcnow)
 
     connection_point: Optional[ConnectionPoint] = Relationship(back_populates="files")

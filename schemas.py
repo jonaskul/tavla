@@ -323,8 +323,9 @@ class FileRead(BaseModel):
     equipment_id: Optional[int] = None
     filename: str
     mimetype: str
-    local_path: str
-    r2_key: Optional[str] = None
+    # Deliberately not exposing storage_key: the client fetches bytes
+    # through /api/files/{id}/content, where the tenant check runs. Handing
+    # out the key invites someone to try reaching the bucket directly.
     uploaded_at: datetime
 
 

@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine
 
+import storage
 from auth import set_authenticator, single_user_authenticator
 from database import get_session
 from main import app
@@ -40,6 +41,17 @@ def _migrated_engine():
     cfg.attributes["sqlalchemy.url"] = TEST_DATABASE_URL
     command.upgrade(cfg, "head")
     return engine
+
+
+@pytest.fixture(autouse=True)
+def in_memory_storage(tmp_path):
+    """Files go to a temp directory, one per test.
+
+    Nothing here touches R2. The S3 path is covered separately in
+    tests/test_storage.py against a stubbed client.
+    """
+    storage.set_storage(storage.LocalStorage(str(tmp_path / "uploads")))
+    yield
 
 
 @pytest.fixture(name="db_engine")

@@ -96,10 +96,11 @@ def test_delete_removes_from_disk(client, connection_point_factory):
         files={"file": ("photo.jpg", io.BytesIO(jpeg), "image/jpeg")},
     )
     assert upload_res.status_code == 200
-    local_path = upload_res.json()["local_path"]
+    file_id = upload_res.json()["id"]
 
     client.delete(f"/api/files/{upload_res.json()['id']}")
-    assert not os.path.exists(local_path)
+    # The bytes are gone from the store, not merely unreferenced.
+    assert client.get(f"/api/files/{file_id}/content").status_code == 404
 
 
 def test_file_stored_in_cp_subdirectory(client, connection_point_factory):
@@ -110,7 +111,10 @@ def test_file_stored_in_cp_subdirectory(client, connection_point_factory):
         files={"file": ("img.jpg", io.BytesIO(jpeg), "image/jpeg")},
     )
     assert res.status_code == 200
-    assert str(cp["id"]) in res.json()["local_path"]
+    # The storage location is no longer exposed to the client; what
+    # matters is that the file is reachable and attached to the right point.
+    assert res.json()["connection_point_id"] == cp["id"]
+    assert client.get(f"/api/files/{res.json()['id']}/content").status_code == 200
 
 
 def test_magic_bytes_override_content_type(client, connection_point_factory):

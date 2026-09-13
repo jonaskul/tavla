@@ -118,5 +118,5 @@ def test_equipment_file_stored_under_equipment_dir(client, equipment_factory):
         files={"file": ("shot.jpg", io.BytesIO(jpeg), "image/jpeg")},
     )
     assert res.status_code == 200
-    local_path = res.json()["local_path"]
-    assert f"equipment/{eq['id']}" in local_path.replace("\\", "/")
+    assert res.json()["equipment_id"] == eq["id"]
+    assert client.get(f"/api/files/{res.json()['id']}/content").status_code == 200

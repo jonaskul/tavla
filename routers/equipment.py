@@ -1,13 +1,11 @@
-import os
-import re
-import uuid
-
 from fastapi import APIRouter, Depends, File as FileField, HTTPException, UploadFile
 from sqlalchemy import desc
 from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
+from routers.files import store_upload
+from tenancy import CurrentOrg
 from models import ChangeLog, Channel, Circuit, Equipment, File
 from schemas import (
     ChannelCreateNested,
@@ -21,16 +19,6 @@ from schemas import (
 
 router = APIRouter()
 
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
-MAX_FILE_SIZE = 20 * 1024 * 1024
-ALLOWED_MIMETYPES = {"image/jpeg", "image/png", "application/pdf"}
-
-MAGIC_BYTES = {
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG\r\n\x1a\n": "image/png",
-    b"%PDF": "application/pdf",
-}
-
 EQUIPMENT_TYPE_LABELS = {
     "floor_heating": "Varmekabler",
     "ev_charger": "Elbillader",
@@ -40,28 +28,6 @@ EQUIPMENT_TYPE_LABELS = {
     "shelly": "Shelly",
     "other": "Annet",
 }
-
-
-def detect_magic(content: bytes) -> Optional[str]:
-    for magic, mime in MAGIC_BYTES.items():
-        if content[: len(magic)] == magic:
-            return mime
-    return None
-
-
-def resolve_mimetype(content: bytes, content_type: str) -> Optional[str]:
-    magic = detect_magic(content)
-    if magic is not None:
-        return magic if magic in ALLOWED_MIMETYPES else None
-    return content_type if content_type in ALLOWED_MIMETYPES else None
-
-
-def sanitize_filename(filename: str) -> str:
-    name = filename.replace("\\", "/").split("/")[-1]
-    name = re.sub(r"\.\.+", ".", name)
-    name = re.sub(r"[^\w\-. ]", "_", name)
-    name = name.strip(". ").strip()
-    return name or "file"
 
 
 def _type_label(eq_type) -> str:
@@ -152,44 +118,14 @@ def list_files_for_equipment(
 @router.post("/{equipment_id}/files", response_model=FileRead)
 async def upload_file_for_equipment(
     equipment_id: int,
+    org: CurrentOrg,
     file: UploadFile = FileField(...),
     session: Session = Depends(get_session),
 ):
-    if not session.get(Equipment, equipment_id):
+    item = session.get(Equipment, equipment_id)
+    if not item or item.organization_id != org:
         raise HTTPException(status_code=404, detail="Equipment not found")
-
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 20 MB)")
-
-    real_mime = resolve_mimetype(content, file.content_type or "")
-    if real_mime is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Filtype ikke støttet. Kun JPG, PNG og PDF er tillatt.",
-        )
-
-    safe_name = sanitize_filename(file.filename or "file")
-    ext = os.path.splitext(safe_name)[1]
-    unique_name = f"{uuid.uuid4()}{ext}"
-
-    eq_dir = os.path.join(UPLOAD_DIR, "equipment", str(equipment_id))
-    os.makedirs(eq_dir, exist_ok=True)
-    local_path = os.path.join(eq_dir, unique_name)
-
-    with open(local_path, "wb") as fh:
-        fh.write(content)
-
-    record = File(
-        equipment_id=equipment_id,
-        filename=safe_name,
-        mimetype=real_mime,
-        local_path=local_path,
-    )
-    session.add(record)
-    session.commit()
-    session.refresh(record)
-    return record
+    return await store_upload(file, session, org, equipment_id=equipment_id)
 
 
 # --- Nested: channels under equipment ---

@@ -53,6 +53,19 @@ AUTH_FROM_EMAIL: Optional[str] = os.getenv("AUTH_FROM_EMAIL") or None
 AUTH_MODE = os.getenv("AUTH_MODE", "session")
 SINGLE_USER_MODE = AUTH_MODE == "single_user"
 
+# File storage. Local disk is the default so a checkout runs with no
+# credentials, but it ties the deployment to one machine: on anything that
+# can be rescheduled, the rows survive and the uploaded photos do not.
+# Setting R2_BUCKET switches to R2 (or any S3-compatible store).
+UPLOAD_DIR = os.getenv(
+    "UPLOAD_DIR",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads"),
+)
+R2_BUCKET: Optional[str] = os.getenv("R2_BUCKET") or None
+R2_ENDPOINT_URL: Optional[str] = os.getenv("R2_ENDPOINT_URL") or None
+R2_ACCESS_KEY_ID: Optional[str] = os.getenv("R2_ACCESS_KEY_ID") or None
+R2_SECRET_ACCESS_KEY: Optional[str] = os.getenv("R2_SECRET_ACCESS_KEY") or None
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 
@@ -107,6 +120,21 @@ def validate() -> List[str]:
         warnings.append(
             "CORS_ORIGINS er tom. Riktig hvis API-et serveres under samme "
             "opphav som frontenden; ellers når ikke nettleseren API-et."
+        )
+
+    if R2_BUCKET:
+        for name, value in (
+            ("R2_ENDPOINT_URL", R2_ENDPOINT_URL),
+            ("R2_ACCESS_KEY_ID", R2_ACCESS_KEY_ID),
+            ("R2_SECRET_ACCESS_KEY", R2_SECRET_ACCESS_KEY),
+        ):
+            if not value:
+                raise ConfigError(f"R2_BUCKET er satt, men {name} mangler")
+    else:
+        warnings.append(
+            "R2_BUCKET er ikke satt — filer lagres på lokal disk. På en "
+            "plattform som kan flytte instansen forsvinner de ved omstart, "
+            "mens radene i databasen blir stående og peke på dem."
         )
 
     if DATABASE_URL.startswith("sqlite"):

@@ -2,15 +2,14 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
-import os
 
 from database import create_db_and_tables, engine
 from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog, modules, channels, module_types, system
 from routers import auth as auth_router
-from routers.files import UPLOAD_DIR
 from routers.module_types import seed_builtin_types
 import config
 import mail
+import storage
 from auth import configure_authentication, single_user_mode
 from tenancy import bootstrap_single_user_install, guard_request
 from sqlmodel import Session
@@ -39,6 +38,7 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
     configure_authentication()
     mail.configure_mailer()
+    storage.configure_storage()
     with Session(engine) as session:
         # Only for installs that opted out of login. With authentication on,
         # accounts come from signing in, and seeding a placeholder user here
@@ -46,7 +46,6 @@ async def lifespan(app: FastAPI):
         if single_user_mode():
             bootstrap_single_user_install(session)
         seed_builtin_types(session)
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
     yield
 
 

@@ -34,6 +34,7 @@ def load(monkeypatch, **env):
         "TAVLA_ENV", "DATABASE_URL", "CORS_ORIGINS", "SESSION_SECRET",
         "RESEND_API_KEY", "AUTH_FROM_EMAIL", "AUTH_MODE",
         "COOKIE_SECURE", "COOKIE_SAMESITE", "COOKIE_DOMAIN",
+        "R2_BUCKET", "R2_ENDPOINT_URL", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
     for key, value in env.items():
@@ -50,6 +51,10 @@ PRODUCTION = dict(
     CORS_ORIGINS="https://app.tavla.no",
     RESEND_API_KEY="re_test",
     AUTH_FROM_EMAIL="innlogging@tavla.no",
+    R2_BUCKET="tavla-filer",
+    R2_ENDPOINT_URL="https://x.r2.cloudflarestorage.com",
+    R2_ACCESS_KEY_ID="nokkel",
+    R2_SECRET_ACCESS_KEY="hemmelig",
 )
 
 
@@ -147,3 +152,25 @@ def test_an_ephemeral_secret_is_stable_within_a_process(monkeypatch):
     """Otherwise a code would stop working between being sent and entered."""
     cfg = load(monkeypatch)
     assert cfg.session_secret_bytes() == cfg.session_secret_bytes()
+
+
+def test_local_file_storage_in_production_warns(monkeypatch):
+    """Uploads on local disk tie the deployment to one machine.
+
+    On anything that can reschedule the instance the rows survive and the
+    photographs do not, which is silent data loss rather than an outage.
+    """
+    env = {k: v for k, v in PRODUCTION.items() if not k.startswith("R2_")}
+    cfg = load(monkeypatch, **env)
+    assert any("R2_BUCKET" in w for w in cfg.validate())
+
+
+@pytest.mark.parametrize(
+    "missing", ["R2_ENDPOINT_URL", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"]
+)
+def test_half_configured_r2_refuses_to_start(monkeypatch, missing):
+    """Half-configured storage would fail on the first upload, not at boot."""
+    env = {k: v for k, v in PRODUCTION.items() if k != missing}
+    cfg = load(monkeypatch, **env)
+    with pytest.raises(cfg.ConfigError, match=missing):
+        cfg.validate()

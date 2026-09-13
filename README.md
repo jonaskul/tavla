@@ -154,6 +154,18 @@ sammen etter ti koder i timen.
    Ta en **fersk** eksport fra en eventuell gammel installasjon: formatet før
    versjon 2 manglet hele skapoversikten.
 
+### Filer
+
+Opplastede bilder og PDF-er går til R2 når `R2_BUCKET` er satt, ellers til
+lokal disk. Lokal disk er greit for en enkelt maskin, men binder deg til
+den: på en plattform som kan flytte instansen — Containers, Fly, Railway —
+overlever radene i databasen mens filene forsvinner.
+
+Nøklene er prefikset med organisasjon (`org-3/…`), så en listing av bøtta er
+delt per kunde. Filene serveres gjennom API-et, ikke via signerte lenker, så
+tilgangssjekken kjører på hver lesning; dette er bilder fra innsiden av
+kunders boliger, og en lenke som virker for hvem som helst er feil standard.
+
 ### Kjent gjenstående
 
 `organization`, `app_user` og `membership` har ikke rad-nivå sikkerhet.
