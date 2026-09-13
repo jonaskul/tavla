@@ -35,8 +35,12 @@ def _run(*args, timeout=30, cwd=None):
 
 
 def _is_systemd_managed() -> bool:
-    """True if tavla-backend is an active systemd service (production)."""
-    rc, _ = _run("systemctl", "is-active", "tavla-backend", timeout=3)
+    """True if tavla is an active systemd service (production).
+
+    The unit name must match the one install.sh writes
+    (/etc/systemd/system/tavla.service) and the one update.sh restarts.
+    """
+    rc, _ = _run("systemctl", "is-active", "tavla", timeout=3)
     return rc == 0
 
 
@@ -114,7 +118,7 @@ _UPDATE_STEPS = [
     ("dependencies", _PIP_CMD),
     ("frontend",     ["npm", "run", "build", "--prefix", "frontend"]),
     ("migrations",   _ALEMBIC_CMD),
-    ("restarting",   ["systemctl", "restart", "tavla-backend"]),
+    ("restarting",   ["systemctl", "restart", "tavla"]),
 ]
 
 
