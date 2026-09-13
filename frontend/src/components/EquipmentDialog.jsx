@@ -27,7 +27,13 @@ export default function EquipmentDialog({ open, initial, onSave, onClose }) {
       )
       setErrors({})
     }
-  }, [open, initial])
+  // Depends on the record's identity, not the object's. Three of these
+  // dialogs are handed live query data (property, panel, circuit), so any
+  // refetch that returns a different object would re-seed the form and wipe
+  // whatever the user had typed. Structural sharing hides this while the
+  // data is unchanged; the moment someone else edits the same record, the
+  // draft disappears mid-sentence with nothing said.
+  }, [open, initial?.id])
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
