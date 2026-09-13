@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 
 from database import get_session
-from models import ChangeLog, Channel, Circuit, ConnectionPoint, Equipment, File, Panel
+from models import ChangeLog, Channel, Circuit, ConnectionPoint, Equipment, File, Module, Panel
 from schemas import (
     ChangeLogRead,
     CircuitCreate,
@@ -96,6 +96,22 @@ def delete_circuit(circuit_id: int, session: Session = Depends(get_session)):
             status_code=409,
             detail="Cannot delete circuit that has connection points",
         )
+    existing_equipment = session.exec(
+        select(Equipment).where(Equipment.circuit_id == circuit_id)
+    ).first()
+    if existing_equipment:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete circuit that has equipment",
+        )
+    # Module.circuit_id has no ORM relationship backing it, so nothing clears
+    # it automatically and SQLite does not enforce the FK. Without this the
+    # panel view keeps rendering a breaker wired to a circuit that is gone.
+    for module in session.exec(
+        select(Module).where(Module.circuit_id == circuit_id)
+    ).all():
+        module.circuit_id = None
+        session.add(module)
     circuit_data = CircuitRead.model_validate(circuit)
     session.delete(circuit)
     session.commit()

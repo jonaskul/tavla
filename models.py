@@ -4,6 +4,13 @@ from datetime import datetime
 from enum import Enum
 
 
+# Child rows a parent owns outright — deleting the parent deletes them.
+# Independent records (panels, circuits, connection points, equipment, files)
+# deliberately have NO cascade: their delete endpoints block with 409 instead,
+# so the user removes them explicitly and never loses data by surprise.
+CASCADE = {"cascade": "all, delete-orphan"}
+
+
 # --- Enums ---
 
 class ModuleType(str, Enum):
@@ -73,7 +80,7 @@ class Panel(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     property: Optional[Property] = Relationship(back_populates="panels")
-    modules: List["Module"] = Relationship(back_populates="panel")
+    modules: List["Module"] = Relationship(back_populates="panel", sa_relationship_kwargs=CASCADE)
     circuits: List["Circuit"] = Relationship(back_populates="panel")
 
 
@@ -129,7 +136,7 @@ class Circuit(SQLModel, table=True):
     panel: Optional[Panel] = Relationship(back_populates="circuits")
     connection_points: List["ConnectionPoint"] = Relationship(back_populates="circuit")
     equipment_items: List["Equipment"] = Relationship(back_populates="circuit")
-    changelog: List["ChangeLog"] = Relationship(back_populates="circuit")
+    changelog: List["ChangeLog"] = Relationship(back_populates="circuit", sa_relationship_kwargs=CASCADE)
     channels: List["Channel"] = Relationship(back_populates="circuit")
 
 
@@ -145,7 +152,7 @@ class ConnectionPoint(SQLModel, table=True):
 
     circuit: Optional[Circuit] = Relationship(back_populates="connection_points")
     files: List["File"] = Relationship(back_populates="connection_point")
-    changelog: List["ChangeLog"] = Relationship(back_populates="connection_point")
+    changelog: List["ChangeLog"] = Relationship(back_populates="connection_point", sa_relationship_kwargs=CASCADE)
 
 
 # --- Equipment ---
@@ -162,8 +169,8 @@ class Equipment(SQLModel, table=True):
 
     circuit: Optional[Circuit] = Relationship(back_populates="equipment_items")
     files: List["File"] = Relationship(back_populates="equipment")
-    changelog: List["ChangeLog"] = Relationship(back_populates="equipment")
-    channels: List["Channel"] = Relationship(back_populates="equipment")
+    changelog: List["ChangeLog"] = Relationship(back_populates="equipment", sa_relationship_kwargs=CASCADE)
+    channels: List["Channel"] = Relationship(back_populates="equipment", sa_relationship_kwargs=CASCADE)
 
 
 # --- File ---
