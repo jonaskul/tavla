@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
+import RequireAuth from './components/RequireAuth'
 import SettingsLayout from './components/SettingsLayout'
 import Properties from './pages/Properties'
 import PropertyDetail from './pages/PropertyDetail'
@@ -12,8 +13,9 @@ import { ModuleTypesProvider } from './contexts/ModuleTypesContext'
 
 export default function App() {
   return (
-    <ModuleTypesProvider>
-      <Layout>
+    <RequireAuth>
+      <ModuleTypesProvider>
+        <Layout>
         <Routes>
           <Route path="/" element={<Properties />} />
           <Route path="/anlegg/:id" element={<PropertyDetail />} />
@@ -26,7 +28,8 @@ export default function App() {
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </Layout>
-    </ModuleTypesProvider>
+        </Layout>
+      </ModuleTypesProvider>
+    </RequireAuth>
   )
 }

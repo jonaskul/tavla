@@ -10,6 +10,20 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Registered by RequireAuth. Any 401 from anywhere means the session is no
+// longer usable — signed out, expired, or revoked from another device — and
+// the gate needs to ask again rather than keep rendering a signed-in app.
+let onUnauthorized = () => {}
+export const setUnauthorizedHandler = (fn) => { onUnauthorized = fn }
+
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) onUnauthorized()
+    return Promise.reject(error)
+  },
+)
+
 export default http
 
 // --- Properties ---
@@ -118,3 +132,12 @@ export const updateModule = (id, data) =>
   http.put(`/modules/${id}`, data).then((r) => r.data)
 export const deleteModule = (id) =>
   http.delete(`/modules/${id}`).then((r) => r.data)
+
+// --- Authentication ---
+// The session is an HttpOnly cookie, so nothing here handles a token.
+export const requestLoginCode = (email) =>
+  http.post('/auth/request-code', { email }).then((r) => r.data)
+export const verifyLoginCode = (email, code) =>
+  http.post('/auth/verify', { email, code }).then((r) => r.data)
+export const signOut = () => http.post('/auth/logout').then((r) => r.data)
+export const getMe = () => http.get('/auth/me').then((r) => r.data)

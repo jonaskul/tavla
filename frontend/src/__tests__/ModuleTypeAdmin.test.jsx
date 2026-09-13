@@ -100,6 +100,11 @@ test('valgt farge vises med hakemerke', async () => {
 
 test('innstillinger-lenke vises i navbar', async () => {
   vi.spyOn(api, 'getModuleTypes').mockResolvedValue([])
+  // App now starts behind the sign-in gate, which asks who is calling before
+  // it renders anything. Without this the whole tree is the "checking" state.
+  vi.spyOn(api, 'getMe').mockResolvedValue({
+    id: 1, email: 'test@example.com', organizations: [{ id: 1, name: 'Test', role: 'owner' }],
+  })
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
@@ -107,5 +112,5 @@ test('innstillinger-lenke vises i navbar', async () => {
       </MemoryRouter>
     </QueryClientProvider>
   )
-  expect(screen.getByRole('link', { name: /innstillinger/i })).toBeInTheDocument()
+  expect(await screen.findByRole('link', { name: /innstillinger/i })).toBeInTheDocument()
 })

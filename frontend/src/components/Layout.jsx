@@ -1,10 +1,25 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getSystemPending } from '../api/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getSystemPending, signOut } from '../api/client'
 import { t } from '../i18n/no'
+import { useSession } from './RequireAuth'
 
 export default function Layout({ children }) {
   const { pathname } = useLocation()
+  const qc = useQueryClient()
+  const { user, refresh } = useSession() ?? {}
+
+  const signOutMutation = useMutation({
+    mutationFn: signOut,
+    onSettled: async () => {
+      // Clear rather than invalidate: what is cached belonged to whoever was
+      // signed in, and none of it is theirs to keep once they are not. Then
+      // ask the gate again — clearing removes the session query rather than
+      // reviving it, so on its own the app kept rendering as the old user.
+      qc.clear()
+      await refresh?.()
+    },
+  })
 
   const { data: pending } = useQuery({
     queryKey: ['system-pending'],
@@ -48,6 +63,21 @@ export default function Layout({ children }) {
               )}
             </Link>
           </nav>
+
+          {user && (
+            <div className="ml-auto flex items-center gap-3 text-sm">
+              <span className="text-gray-500 hidden sm:inline" title={t.auth.signedInAs}>
+                {user.email}
+              </span>
+              <button
+                onClick={() => signOutMutation.mutate()}
+                disabled={signOutMutation.isPending}
+                className="text-gray-600 hover:text-blue-600 disabled:opacity-50"
+              >
+                {t.auth.signOut}
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

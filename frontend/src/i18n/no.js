@@ -272,6 +272,32 @@ export const t = {
     },
   },
 
+  // Sign-in
+  auth: {
+    title: "Logg inn i Tavla",
+    intro: "Skriv inn e-postadressen din, så sender vi deg en engangskode.",
+    email: "E-post",
+    sendCode: "Send kode",
+    sending: "Sender…",
+    // Deliberately non-committal: the server answers the same whether or not
+    // the address has an account, and the UI must not give away what the
+    // server is hiding.
+    codeSent: "Hvis adressen er gyldig, har vi sendt en sekssifret kode til {email}.",
+    code: "Engangskode",
+    codeValidity: "Koden er gyldig i 10 minutter.",
+    signIn: "Logg inn",
+    signingIn: "Logger inn…",
+    useAnotherEmail: "Bruk en annen adresse",
+    resend: "Send ny kode",
+    emailRequired: "E-post er påkrevd",
+    emailInvalid: "Ugyldig e-postadresse",
+    codeRequired: "Skriv inn koden fra e-posten",
+    invalidCode: "Ugyldig eller utløpt kode. Prøv igjen, eller be om en ny.",
+    checking: "Sjekker innlogging…",
+    signOut: "Logg ut",
+    signedInAs: "Innlogget som",
+  },
+
   // Common
   common: {
     save: "Lagre",
