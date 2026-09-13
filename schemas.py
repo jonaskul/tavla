@@ -358,3 +358,86 @@ class ChangeLogCreate(BaseModel):
                 "At least one of circuit_id, connection_point_id, or equipment_id must be set"
             )
         return self
+
+
+# --- Import / export ---
+#
+# The shape of an exported property file. Validating it here turns a
+# malformed file into a clear 422 instead of an IntegrityError halfway
+# through the import. Ids are the file's own and act as references within
+# it; the importer remaps them and never trusts them as database keys.
+
+class ChannelImport(BaseModel):
+    number: int = Field(ge=1)
+    label: Optional[str] = None
+    load: Optional[str] = None
+    watt: Optional[int] = None
+    channel_type: ChannelType = ChannelType.relay
+    notes: Optional[str] = None
+    circuit_id: Optional[int] = None
+
+
+class EquipmentImport(BaseModel):
+    id: Optional[int] = None
+    type: EquipmentType
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    watt: Optional[int] = None
+    notes: Optional[str] = None
+    channels: list[ChannelImport] = Field(default_factory=list)
+
+
+class ConnectionPointImport(BaseModel):
+    id: Optional[int] = None
+    type: ConnectionPointType
+    location: str
+    notes: Optional[str] = None
+
+
+class CircuitImport(BaseModel):
+    id: Optional[int] = None
+    designation: str
+    name: str
+    room: Optional[str] = None
+    cable_type: Optional[CableType] = None
+    cross_section: Optional[float] = None
+    conductor_count: Optional[int] = None
+    length_m: Optional[float] = None
+    notes: Optional[str] = None
+    connection_points: list[ConnectionPointImport] = Field(default_factory=list)
+    equipment: list[EquipmentImport] = Field(default_factory=list)
+
+
+class ModuleImport(BaseModel):
+    row: int = Field(ge=0)
+    position: int = Field(ge=0)
+    width: int = Field(default=1, ge=1)
+    type: str
+    label: Optional[str] = None
+    ampere: Optional[int] = None
+    has_rcd: bool = False
+    is_vacant: bool = False
+    circuit_id: Optional[int] = None
+
+
+class PanelImport(BaseModel):
+    id: Optional[int] = None
+    name: str
+    location: str
+    rows: int = Field(default=1, ge=1)
+    modules_per_row: int = Field(default=12, ge=1)
+    notes: Optional[str] = None
+    modules: list[ModuleImport] = Field(default_factory=list)
+    circuits: list[CircuitImport] = Field(default_factory=list)
+
+
+class PropertyExport(BaseModel):
+    # Absent in files written before the format was versioned; those predate
+    # modules being exported at all.
+    format_version: int = 1
+    name: str
+    address: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    owner_phone: Optional[str] = None
+    panels: list[PanelImport] = Field(default_factory=list)
