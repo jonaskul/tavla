@@ -40,22 +40,35 @@ class ModuleTypeDefinitionUpdate(BaseModel):
 
 # --- Property ---
 
+# The real-world owner of the installation, who is usually not a user of
+# Tavla: an electrician documents a customer's house. Added to the model
+# when tenancy landed, but not to these schemas, so the fields were
+# unreachable through the API until the contract suite noticed.
 class PropertyRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     address: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    owner_phone: Optional[str] = None
     created_at: datetime
 
 
 class PropertyCreate(BaseModel):
     name: str
     address: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    owner_phone: Optional[str] = None
 
 
 class PropertyUpdate(BaseModel):
     name: Optional[str] = None
     address: Optional[str] = None
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    owner_phone: Optional[str] = None
 
 
 # --- Panel ---
