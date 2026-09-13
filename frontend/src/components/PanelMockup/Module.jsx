@@ -22,7 +22,7 @@ export default function Module({ module, isShaking, onMouseDown, onContextMenu }
 
   return (
     <div
-      data-testid="draggable-module"
+      data-testid={`module-${module.id}`}
       className={`${isShaking ? 'shake' : ''} module-${module.type} ${isVacant ? 'module-vacant' : ''} h-16 rounded flex flex-col items-center justify-center cursor-grab select-none px-1 shrink-0`}
       style={{ width: slotPx(module.width), backgroundColor: bgColor, color: textColor }}
       onMouseDown={onMouseDown}

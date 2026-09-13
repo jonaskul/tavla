@@ -107,8 +107,8 @@ describe('CircuitDetail — circuit info', () => {
 
   it('shows back link to property via panel', async () => {
     render(wrapper())
-    await screen.findByText(/Eiendommer/i)
-    const link = screen.getAllByRole('link').find((l) => l.getAttribute('href') === '/eiendommer/5')
+    await screen.findByText(/Anlegg/i)
+    const link = screen.getAllByRole('link').find((l) => l.getAttribute('href') === '/anlegg/5')
     expect(link).toBeTruthy()
   })
 })

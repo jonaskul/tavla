@@ -12,13 +12,13 @@ const wrapper = ({ children }) => (
   </QueryClientProvider>
 )
 
-test('viser melding når ingen eiendommer finnes', async () => {
+test('viser melding når ingen anlegg finnes', async () => {
   vi.spyOn(api, 'getProperties').mockResolvedValue([])
   render(<Properties />, { wrapper })
-  await waitFor(() => screen.getByText(/ingen eiendommer/i))
+  await waitFor(() => screen.getByText(/ingen anlegg/i))
 })
 
-test('viser liste over eiendommer', async () => {
+test('viser liste over anlegg', async () => {
   vi.spyOn(api, 'getProperties').mockResolvedValue([
     { id: 1, name: 'Hjemme', address: 'Testveien 1' },
   ])
@@ -29,7 +29,7 @@ test('viser liste over eiendommer', async () => {
 test('skjema validerer påkrevde felt', async () => {
   vi.spyOn(api, 'getProperties').mockResolvedValue([])
   render(<Properties />, { wrapper })
-  await userEvent.click(screen.getByText(/legg til eiendom/i))
+  await userEvent.click(screen.getByText(/legg til anlegg/i))
   await userEvent.click(screen.getByText(/lagre/i))
   expect(screen.getByText(/navn er påkrevd/i)).toBeInTheDocument()
 })
