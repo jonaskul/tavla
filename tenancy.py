@@ -32,14 +32,19 @@ what will set the session variable those policies read.
 
 from typing import Annotated, Optional
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy import event
 from sqlmodel import Session, select
 
+from auth import Principal, current_principal, ensure_single_user
 from database import get_session
-from models import Organization, TENANT_MODELS
+from models import Membership, Organization, TENANT_MODELS
 
 SESSION_KEY = "organization_id"
+
+# Names which of the caller's organizations to act as. Optional for anyone
+# who belongs to exactly one, which is everybody until teams exist.
+ORG_HEADER = "X-Organization-Id"
 
 DEFAULT_ORG_NAME = "Standard"
 
@@ -101,21 +106,113 @@ def ensure_default_organization(session: Session) -> Organization:
     return org
 
 
-def current_organization_id(session: Session = Depends(get_session)) -> int:
-    """The organization this request acts as.
+def bootstrap_single_user_install(session: Session) -> None:
+    """Give a fresh database the organization, user and membership it needs.
 
-    Today: the one organization that exists. When auth lands this reads the
-    authenticated user's active membership, and every caller below is
-    already written against it.
+    Startup's job, not the authenticator's: creating a user must not be a
+    side effect of an unauthenticated request. Goes away once sign-up
+    exists.
     """
+    org = ensure_default_organization(session)
+    ensure_single_user(session, org.id)
+
+
+def _memberships(session: Session, user_id: int):
+    return session.exec(
+        select(Membership)
+        .where(Membership.user_id == user_id)
+        .order_by(Membership.id)
+    ).all()
+
+
+def resolve_organization(
+    request: Request, principal: Optional[Principal], session: Session
+) -> Optional[int]:
+    """Which of the caller's organizations this request acts as.
+
+    A person can belong to several — an electrician documenting customers'
+    installations who also documents their own house. The header names
+    which one; with a single membership it can be left out.
+
+    Every path that is not a confirmed membership returns None, and None
+    means the request sees nothing. An unknown header value is therefore
+    not an error to route around but simply not a membership.
+    """
+    if principal is None:
+        return None
+
+    memberships = _memberships(session, principal.user_id)
+    if not memberships:
+        return None
+
+    requested = request.headers.get(ORG_HEADER)
+    if requested is not None:
+        try:
+            wanted = int(requested)
+        except ValueError:
+            return None
+        return wanted if any(m.organization_id == wanted for m in memberships) else None
+
+    # No header: the oldest membership, which is the only one for everybody
+    # who belongs to a single organization.
+    return memberships[0].organization_id
+
+
+def current_organization_id(
+    request: Request,
+    principal: Optional[Principal] = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> Optional[int]:
+    """The organization this request acts as, or None if nobody is signed in."""
     org_id = session_organization(session)
-    if org_id is None:
-        org_id = ensure_default_organization(session).id
+    if org_id is not None:
+        return org_id
+
+    org_id = resolve_organization(request, principal, session)
+    if org_id is not None:
         bind_organization(session, org_id)
     return org_id
 
 
-CurrentOrg = Annotated[int, Depends(current_organization_id)]
+def require_organization(
+    org_id: Optional[int] = Depends(current_organization_id),
+) -> int:
+    """For endpoints that cannot do anything useful without a tenant."""
+    if org_id is None:
+        raise HTTPException(status_code=401, detail="Ikke innlogget")
+    return org_id
+
+
+CurrentOrg = Annotated[int, Depends(require_organization)]
+
+
+# Reachable without signing in. Everything else is refused, so a new
+# endpoint is protected by default rather than by remembering to protect
+# it — including /api/system, which shells out to git and systemctl.
+PUBLIC_PATHS = frozenset({
+    "/api/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+})
+
+
+def guard_request(
+    request: Request, org_id: Optional[int] = Depends(current_organization_id)
+) -> None:
+    """Bind the acting tenant, and refuse anything needing one without it.
+
+    Applied once at the application level. Declaring CurrentOrg on each
+    endpoint instead would leave a create endpoint that forgot it writing a
+    row with no organization — which surfaces as a 500 from a NOT NULL
+    violation rather than a 401, and would be a hole the day that column
+    stops being NOT NULL.
+    """
+    if org_id is not None:
+        return
+    if request.url.path in PUBLIC_PATHS:
+        return
+    raise HTTPException(status_code=401, detail="Ikke innlogget")
 
 
 @event.listens_for(Session, "before_flush")

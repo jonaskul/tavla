@@ -12,7 +12,7 @@ from sqlmodel import SQLModel, Session, create_engine
 from database import get_session
 from main import app
 from routers.module_types import seed_builtin_types
-from tenancy import bind_organization, ensure_default_organization
+from tenancy import bind_organization, bootstrap_single_user_install, ensure_default_organization
 
 
 # Set TEST_DATABASE_URL to run the whole suite against PostgreSQL instead of
@@ -62,6 +62,7 @@ def db_engine_fixture(request):
         SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
+        bootstrap_single_user_install(session)
         org = ensure_default_organization(session)
         # Seeding writes the shared built-in types, which the RLS policy on
         # moduletypedefinition admits because their organization_id is NULL.
