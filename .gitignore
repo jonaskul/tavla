@@ -25,3 +25,4 @@ Thumbs.db
 # Workers
 workers/node_modules/
 workers/.wrangler/
+workers/.dev.vars

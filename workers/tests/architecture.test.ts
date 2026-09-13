@@ -23,8 +23,12 @@ const SRC = path.join(import.meta.dirname, "..", "src");
 const MAY_BE_UNSCOPED = new Set([
   "db/tenant.ts", // defines the boundary
   "db/index.ts", // constructs the handle in the first place
-  "auth.ts", // looks up a session before a tenant is known
-  "signup.ts", // creates the organization a caller will then be scoped to
+  // Looks up a session, resolves which organization the caller acts as,
+  // and provisions an account on first sign-in. All three necessarily
+  // happen before a tenant is known. Note what is NOT here: routes/auth.ts
+  // touches no table, it calls this module — which is why the exception
+  // stays one file rather than spreading to the endpoints that use it.
+  "auth.ts",
   "moduleTypes.ts", // built-in types are shared and have no organization
 ]);
 

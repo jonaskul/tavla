@@ -11,11 +11,10 @@ import { drizzle } from "drizzle-orm/d1";
 
 import * as schema from "../schema";
 import { Tenant } from "./tenant";
+import type { Bindings } from "../config";
 
-export interface Bindings {
-  DB: D1Database;
-  FILES: R2Bucket;
-}
+// Re-exported so a handler needs one import for "what the worker is given".
+export type { Bindings };
 
 export type Db = ReturnType<typeof connect>;
 
