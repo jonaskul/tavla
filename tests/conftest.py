@@ -6,10 +6,12 @@ from sqlmodel import SQLModel, Session, create_engine
 from database import get_session
 from main import app
 from routers.module_types import seed_builtin_types
+from tenancy import ensure_default_organization
 
 
-@pytest.fixture(name="client")
-def client_fixture():
+@pytest.fixture(name="db_engine")
+def db_engine_fixture():
+    """A fresh in-memory database, seeded the way a new install would be."""
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -17,10 +19,15 @@ def client_fixture():
     )
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
+        ensure_default_organization(session)
         seed_builtin_types(session)
+    return engine
 
+
+@pytest.fixture(name="client")
+def client_fixture(db_engine):
     def get_test_session():
-        with Session(engine) as session:
+        with Session(db_engine) as session:
             yield session
 
     app.dependency_overrides[get_session] = get_test_session

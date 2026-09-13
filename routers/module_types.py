@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlmodel import Session, select
-from typing import List
+from typing import Dict, List, Optional
 
 from database import get_session
 from models import Module, ModuleTypeDefinition
 from schemas import ModuleTypeDefinitionCreate, ModuleTypeDefinitionRead, ModuleTypeDefinitionUpdate
+from tenancy import CurrentOrg
 
 router = APIRouter()
 
@@ -21,67 +23,142 @@ BUILTIN_TYPES = [
 
 
 def seed_builtin_types(session: Session) -> None:
-    existing = session.exec(select(ModuleTypeDefinition)).first()
-    if existing:
-        return
+    """Insert any built-in type this database does not have yet.
+
+    Built-ins carry organization_id = NULL and are shared by every tenant.
+    Upserting per key rather than bailing out when the table is non-empty:
+    the old version returned early if any row existed, so a type added to
+    BUILTIN_TYPES later never reached an existing install.
+    """
+    existing = {
+        row.key
+        for row in session.exec(
+            select(ModuleTypeDefinition).where(ModuleTypeDefinition.is_builtin == True)  # noqa: E712
+        ).all()
+    }
+    added = False
     for data in BUILTIN_TYPES:
-        session.add(ModuleTypeDefinition(is_builtin=True, **data))
-    session.commit()
+        if data["key"] in existing:
+            continue
+        session.add(ModuleTypeDefinition(is_builtin=True, organization_id=None, **data))
+        added = True
+    if added:
+        session.commit()
 
 
-def _with_usage(mtd: ModuleTypeDefinition, session: Session) -> ModuleTypeDefinitionRead:
+def _usage_counts(session: Session, org_id: int) -> Dict[str, int]:
+    """How many modules use each type, in one query rather than one per type."""
+    rows = session.exec(
+        select(Module.type, func.count(Module.id))
+        .where(Module.organization_id == org_id)
+        .group_by(Module.type)
+    ).all()
+    return {key: count for key, count in rows}
+
+
+def _visible(session: Session, org_id: int) -> List[ModuleTypeDefinition]:
+    """Built-in types plus this organization's own.
+
+    Where an organization has customised a built-in, its version shadows the
+    shared one — same key, one entry. See update_module_type.
+    """
+    rows = session.exec(
+        select(ModuleTypeDefinition).where(
+            (ModuleTypeDefinition.organization_id == org_id)
+            | (ModuleTypeDefinition.organization_id == None)  # noqa: E711
+        )
+    ).all()
+    by_key: Dict[str, ModuleTypeDefinition] = {}
+    for row in rows:
+        if row.key not in by_key or row.organization_id is not None:
+            by_key[row.key] = row
+    return list(by_key.values())
+
+
+def _read(mtd: ModuleTypeDefinition, counts: Dict[str, int]) -> ModuleTypeDefinitionRead:
     d = ModuleTypeDefinitionRead.model_validate(mtd)
-    d.usage_count = len(session.exec(select(Module).where(Module.type == mtd.key)).all())
+    d.usage_count = counts.get(mtd.key, 0)
     return d
 
 
+def _get_visible(type_id: int, session: Session, org_id: int) -> ModuleTypeDefinition:
+    mtd = session.get(ModuleTypeDefinition, type_id)
+    if not mtd or mtd.organization_id not in (org_id, None):
+        raise HTTPException(status_code=404, detail="Module type not found")
+    return mtd
+
+
 @router.get("", response_model=List[ModuleTypeDefinitionRead])
-def list_module_types(session: Session = Depends(get_session)):
-    rows = session.exec(select(ModuleTypeDefinition)).all()
-    result = [_with_usage(row, session) for row in rows]
+def list_module_types(org: CurrentOrg, session: Session = Depends(get_session)):
+    counts = _usage_counts(session, org)
+    result = [_read(row, counts) for row in _visible(session, org)]
     return sorted(result, key=lambda r: (0 if r.is_builtin else 1, r.name_no))
 
 
 @router.get("/{type_id}", response_model=ModuleTypeDefinitionRead)
-def get_module_type(type_id: int, session: Session = Depends(get_session)):
-    mtd = session.get(ModuleTypeDefinition, type_id)
-    if not mtd:
-        raise HTTPException(status_code=404, detail="Module type not found")
-    return _with_usage(mtd, session)
+def get_module_type(type_id: int, org: CurrentOrg, session: Session = Depends(get_session)):
+    mtd = _get_visible(type_id, session, org)
+    return _read(mtd, _usage_counts(session, org))
 
 
 @router.post("", response_model=ModuleTypeDefinitionRead)
-def create_module_type(data: ModuleTypeDefinitionCreate, session: Session = Depends(get_session)):
-    if session.exec(select(ModuleTypeDefinition).where(ModuleTypeDefinition.key == data.key)).first():
+def create_module_type(
+    data: ModuleTypeDefinitionCreate, org: CurrentOrg, session: Session = Depends(get_session)
+):
+    # A key must be unique among what this organization can see, which
+    # includes the shared built-ins.
+    if any(row.key == data.key for row in _visible(session, org)):
         raise HTTPException(status_code=400, detail="Module type key already exists")
-    mtd = ModuleTypeDefinition(is_builtin=False, **data.model_dump())
+    mtd = ModuleTypeDefinition(is_builtin=False, organization_id=org, **data.model_dump())
     session.add(mtd)
     session.commit()
     session.refresh(mtd)
-    return _with_usage(mtd, session)
+    return _read(mtd, _usage_counts(session, org))
 
 
 @router.put("/{type_id}", response_model=ModuleTypeDefinitionRead)
 def update_module_type(
-    type_id: int, data: ModuleTypeDefinitionUpdate, session: Session = Depends(get_session)
+    type_id: int,
+    data: ModuleTypeDefinitionUpdate,
+    org: CurrentOrg,
+    session: Session = Depends(get_session),
 ):
-    mtd = session.get(ModuleTypeDefinition, type_id)
-    if not mtd:
-        raise HTTPException(status_code=404, detail="Module type not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(mtd, field, value)
+    mtd = _get_visible(type_id, session, org)
+    changes = data.model_dump(exclude_unset=True)
+
+    if mtd.organization_id is None:
+        # Built-ins are shared by every tenant, so editing one in place would
+        # change it for everyone. Copy on write instead: this organization
+        # gets its own version, which shadows the shared one by key. Deleting
+        # that copy later reverts to the default.
+        mtd = ModuleTypeDefinition(
+            organization_id=org,
+            key=mtd.key,
+            is_builtin=True,
+            name_no=changes.get("name_no", mtd.name_no),
+            color=changes.get("color", mtd.color),
+            abbreviation=changes.get("abbreviation", mtd.abbreviation),
+            can_have_circuit=changes.get("can_have_circuit", mtd.can_have_circuit),
+            can_have_ampere=changes.get("can_have_ampere", mtd.can_have_ampere),
+        )
+    else:
+        for field, value in changes.items():
+            setattr(mtd, field, value)
+
     session.add(mtd)
     session.commit()
     session.refresh(mtd)
-    return _with_usage(mtd, session)
+    return _read(mtd, _usage_counts(session, org))
 
 
 @router.delete("/{type_id}", response_model=ModuleTypeDefinitionRead)
-def delete_module_type(type_id: int, session: Session = Depends(get_session)):
-    mtd = session.get(ModuleTypeDefinition, type_id)
-    if not mtd:
-        raise HTTPException(status_code=404, detail="Module type not found")
-    count = len(session.exec(select(Module).where(Module.type == mtd.key)).all())
+def delete_module_type(type_id: int, org: CurrentOrg, session: Session = Depends(get_session)):
+    mtd = _get_visible(type_id, session, org)
+    if mtd.organization_id is None:
+        # Shared across every tenant — not this organization's to remove.
+        raise HTTPException(status_code=409, detail="Built-in types cannot be deleted")
+    counts = _usage_counts(session, org)
+    count = counts.get(mtd.key, 0)
     if count > 0:
         raise HTTPException(
             status_code=409,
@@ -95,6 +172,5 @@ def delete_module_type(type_id: int, session: Session = Depends(get_session)):
 
 
 @router.get("/{key}/usage")
-def get_module_type_usage(key: str, session: Session = Depends(get_session)):
-    count = len(session.exec(select(Module).where(Module.type == key)).all())
-    return {"key": key, "count": count}
+def get_module_type_usage(key: str, org: CurrentOrg, session: Session = Depends(get_session)):
+    return {"key": key, "count": _usage_counts(session, org).get(key, 0)}

@@ -129,11 +129,38 @@ def test_delete_builtin_type_in_use_blocked(client, panel_factory):
     assert res.status_code == 409
 
 
-def test_delete_builtin_type_not_in_use_allowed(client):
+def test_delete_builtin_type_blocked(client):
+    """Built-ins are shared by every organization, so one cannot remove them.
+
+    This used to return 200 and delete the row. With tenancy that would take
+    the type away from every other tenant. The frontend already carried the
+    message for this case (settings.moduleTypes.builtinDeleteBlocked); the
+    backend simply never enforced it.
+    """
     res = client.get("/api/module_types")
     surge = next(t for t in res.json() if t["key"] == "surge_protection")
     res = client.delete(f"/api/module_types/{surge['id']}")
+    assert res.status_code == 409
+
+
+def test_customising_a_builtin_copies_it_for_this_org(client):
+    """Editing a shared built-in must not mutate it in place."""
+    breaker = next(t for t in client.get("/api/module_types").json() if t["key"] == "breaker")
+
+    res = client.put(f"/api/module_types/{breaker['id']}", json={"color": "#ff0000"})
     assert res.status_code == 200
+    override_id = res.json()["id"]
+    assert override_id != breaker["id"], "expected a new row, not an edit of the shared type"
+
+    # The key appears once, showing this organization's version.
+    listing = [t for t in client.get("/api/module_types").json() if t["key"] == "breaker"]
+    assert len(listing) == 1
+    assert listing[0]["color"] == "#ff0000"
+
+    # Removing the override reverts to the shared default.
+    assert client.delete(f"/api/module_types/{override_id}").status_code == 200
+    reverted = next(t for t in client.get("/api/module_types").json() if t["key"] == "breaker")
+    assert reverted["id"] == breaker["id"]
 
 
 def test_usage_count_endpoint(client, panel_factory):

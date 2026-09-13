@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -6,7 +6,9 @@ import os
 
 from database import create_db_and_tables, engine
 from routers import properties, panels, circuits, connection_points, equipment, files, export, changelog, modules, channels, module_types, system
+from routers.files import UPLOAD_DIR
 from routers.module_types import seed_builtin_types
+from tenancy import current_organization_id, ensure_default_organization
 from sqlmodel import Session
 
 
@@ -14,8 +16,9 @@ from sqlmodel import Session
 async def lifespan(app: FastAPI):
     create_db_and_tables()
     with Session(engine) as session:
+        ensure_default_organization(session)
         seed_builtin_types(session)
-    os.makedirs("../uploads", exist_ok=True)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
     yield
 
 
@@ -24,6 +27,11 @@ app = FastAPI(
     description="Electrical installation documentation for Norwegian homes",
     version="0.1.0",
     lifespan=lifespan,
+    # Runs on every request, so the flush listener in tenancy.py always has an
+    # organization to stamp new rows with — an endpoint cannot forget to ask
+    # for it. App-level rather than middleware so it resolves through the
+    # injected session, which tests override.
+    dependencies=[Depends(current_organization_id)],
 )
 
 app.add_middleware(
