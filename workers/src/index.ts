@@ -7,19 +7,16 @@
  * sessions and replace this file entirely.
  */
 
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 
 import * as s from "./schema";
+import { connect, type Bindings } from "./db";
 
-export interface Env {
-  DB: D1Database;
-  FILES: R2Bucket;
-}
+export type Env = Bindings;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const db = drizzle(env.DB, { schema: s });
+    const db = connect(env);
     const url = new URL(request.url);
 
     if (url.pathname !== "/smoke") {
