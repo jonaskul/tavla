@@ -30,9 +30,15 @@ beforeAll(async () => {
  * every tenant. Clearing them made every module in these tests answer
  * "Unknown module type: breaker" — a 422 that looked like a validation
  * bug and was really the fixture eating the seed.
+ *
+ * The condition is organization_id, not is_builtin. A tenant's
+ * copy-on-write override of a built-in keeps is_builtin true — that is
+ * what sorts it with the standard types — so keying on the flag left
+ * those rows behind, and they in turn held their organization alive and
+ * broke the wipe entirely. What makes a row shared is having no owner.
  */
 const KEEP: Record<string, string> = {
-  moduletypedefinition: " where is_builtin = 0",
+  moduletypedefinition: " where organization_id is not null",
 };
 
 beforeEach(async () => {

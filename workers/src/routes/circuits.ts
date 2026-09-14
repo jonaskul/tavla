@@ -15,14 +15,26 @@
  */
 
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import * as s from "../schema";
 import type { Env } from "../context";
 import type { Tenant } from "../db";
 import { fail, intParam, intQuery } from "../http";
-import { CIRCUIT_CREATE, CIRCUIT_UPDATE, circuitRead } from "../schemas";
+import {
+  CIRCUIT_CREATE,
+  CIRCUIT_UPDATE,
+  CONNECTION_POINT_CREATE_NESTED,
+  EQUIPMENT_CREATE_NESTED,
+  changelogRead,
+  circuitRead,
+  connectionPointRead,
+  equipmentRead,
+} from "../schemas";
 import { readBody } from "../validate";
+import { newestFirst } from "./changelog";
+import { addLogged } from "./connectionPoints";
+import { add as addEquipment } from "./equipment";
 import { must } from "./lookup";
 import { addCircuit } from "./panels";
 
@@ -96,4 +108,49 @@ circuitRoutes.delete("/:circuit_id", async (c) => {
   ]);
 
   return c.json(circuitRead(row));
+});
+
+// --- Nested: what hangs off a circuit --------------------------------------
+
+circuitRoutes.get("/:circuit_id/connection_points", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("circuit_id"));
+  await owned(tenant, id);
+  const rows = await tenant.list(s.connectionPoint, eq(s.connectionPoint.circuitId, id));
+  return c.json(rows.map(connectionPointRead));
+});
+
+circuitRoutes.post("/:circuit_id/connection_points", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("circuit_id"));
+  await owned(tenant, id);
+
+  const body = await readBody(c.req.raw, CONNECTION_POINT_CREATE_NESTED);
+  return c.json(connectionPointRead(await addLogged(tenant, id, body)));
+});
+
+circuitRoutes.get("/:circuit_id/equipment", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("circuit_id"));
+  await owned(tenant, id);
+  const rows = await tenant.list(s.equipment, eq(s.equipment.circuitId, id));
+  return c.json(rows.map(equipmentRead));
+});
+
+circuitRoutes.post("/:circuit_id/equipment", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("circuit_id"));
+  await owned(tenant, id);
+
+  const body = await readBody(c.req.raw, EQUIPMENT_CREATE_NESTED);
+  return c.json(equipmentRead(await addEquipment(tenant, id, body)));
+});
+
+circuitRoutes.get("/:circuit_id/changelog", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("circuit_id"));
+  await owned(tenant, id);
+
+  const rows = await tenant.list(s.changelog, eq(s.changelog.circuitId, id), newestFirst);
+  return c.json(rows.map(changelogRead));
 });

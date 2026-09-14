@@ -192,3 +192,207 @@ export function circuitRead(row: typeof s.circuit.$inferSelect) {
     created_at: iso(row.createdAt),
   };
 }
+
+// --- ConnectionPoint -------------------------------------------------------
+
+export const CONNECTION_POINT_TYPES = [
+  "junction_box", "outlet", "light", "switch", "motor", "other",
+] as const;
+export type ConnectionPointType = (typeof CONNECTION_POINT_TYPES)[number];
+
+/** What the log calls each kind, in Norwegian. */
+export const CONNECTION_POINT_LABELS: Record<string, string> = {
+  junction_box: "Koblingsboks",
+  outlet: "Stikkontakt",
+  light: "Lampe/armatur",
+  switch: "Bryter",
+  motor: "Motor",
+  other: "Annet",
+};
+
+const CONNECTION_POINT_BODY: Shape = {
+  type: { kind: "string", required: true, values: CONNECTION_POINT_TYPES },
+  location: { kind: "string", required: true },
+  notes: optionalText,
+};
+
+export const CONNECTION_POINT_CREATE: Shape = {
+  circuit_id: { kind: "int", required: true },
+  ...CONNECTION_POINT_BODY,
+};
+
+export const CONNECTION_POINT_CREATE_NESTED: Shape = CONNECTION_POINT_BODY;
+
+export const CONNECTION_POINT_UPDATE: Shape = {
+  type: { kind: "string", values: CONNECTION_POINT_TYPES },
+  location: { kind: "string" },
+  notes: optionalText,
+};
+
+export function connectionPointRead(row: typeof s.connectionPoint.$inferSelect) {
+  return {
+    id: row.id,
+    circuit_id: row.circuitId,
+    type: row.type,
+    location: row.location,
+    notes: row.notes,
+    created_at: iso(row.createdAt),
+  };
+}
+
+// --- Equipment -------------------------------------------------------------
+
+export const EQUIPMENT_TYPES = [
+  "floor_heating", "ev_charger", "heat_pump", "boiler", "dynalite", "shelly", "other",
+] as const;
+export type EquipmentType = (typeof EQUIPMENT_TYPES)[number];
+
+export const EQUIPMENT_LABELS: Record<string, string> = {
+  floor_heating: "Varmekabler",
+  ev_charger: "Elbillader",
+  heat_pump: "Varmepumpe",
+  boiler: "Varmtvannsbereder",
+  dynalite: "Dynalite",
+  shelly: "Shelly",
+  other: "Annet",
+};
+
+const EQUIPMENT_BODY: Shape = {
+  type: { kind: "string", required: true, values: EQUIPMENT_TYPES },
+  brand: optionalText,
+  model: optionalText,
+  watt: { kind: "int" },
+  notes: optionalText,
+  // Not a column: a convenience that makes N channels along with the
+  // equipment, because a four-channel dimmer is four rows nobody wants to
+  // add one at a time.
+  channel_count: { kind: "int" },
+};
+
+export const EQUIPMENT_CREATE: Shape = {
+  circuit_id: { kind: "int", required: true },
+  ...EQUIPMENT_BODY,
+};
+
+export const EQUIPMENT_CREATE_NESTED: Shape = EQUIPMENT_BODY;
+
+export const EQUIPMENT_UPDATE: Shape = {
+  type: { kind: "string", values: EQUIPMENT_TYPES },
+  brand: optionalText,
+  model: optionalText,
+  watt: { kind: "int" },
+  notes: optionalText,
+};
+
+export function equipmentRead(row: typeof s.equipment.$inferSelect) {
+  return {
+    id: row.id,
+    circuit_id: row.circuitId,
+    type: row.type,
+    brand: row.brand,
+    model: row.model,
+    watt: row.watt,
+    notes: row.notes,
+    created_at: iso(row.createdAt),
+  };
+}
+
+// --- Channel ---------------------------------------------------------------
+
+export const CHANNEL_TYPES = ["relay", "dimmer"] as const;
+export type ChannelType = (typeof CHANNEL_TYPES)[number];
+
+export const CHANNEL_CREATE_NESTED: Shape = {
+  number: { kind: "int", required: true },
+  label: optionalText,
+  load: optionalText,
+  circuit_id: { kind: "int" },
+  notes: optionalText,
+  channel_type: { kind: "string", default: "relay", values: CHANNEL_TYPES },
+  watt: { kind: "int" },
+};
+
+export const CHANNEL_UPDATE: Shape = {
+  label: optionalText,
+  load: optionalText,
+  circuit_id: { kind: "int" },
+  notes: optionalText,
+  channel_type: { kind: "string", values: CHANNEL_TYPES },
+  watt: { kind: "int" },
+};
+
+/** No created_at on a channel, here or on the Python side. */
+export function channelRead(row: typeof s.channel.$inferSelect) {
+  return {
+    id: row.id,
+    equipment_id: row.equipmentId,
+    number: row.number,
+    label: row.label,
+    load: row.load,
+    circuit_id: row.circuitId,
+    notes: row.notes,
+    channel_type: row.channelType,
+    watt: row.watt,
+  };
+}
+
+// --- ChangeLog -------------------------------------------------------------
+
+export const CHANGELOG_CREATE: Shape = {
+  circuit_id: { kind: "int" },
+  connection_point_id: { kind: "int" },
+  equipment_id: { kind: "int" },
+  changed_by: { kind: "string", default: "system" },
+  description: { kind: "string", required: true },
+};
+
+export function changelogRead(row: typeof s.changelog.$inferSelect) {
+  return {
+    id: row.id,
+    circuit_id: row.circuitId,
+    connection_point_id: row.connectionPointId,
+    equipment_id: row.equipmentId,
+    changed_by: row.changedBy,
+    description: row.description,
+    changed_at: iso(row.changedAt),
+  };
+}
+
+// --- ModuleTypeDefinition --------------------------------------------------
+
+export const MODULE_TYPE_CREATE: Shape = {
+  key: { kind: "string", required: true },
+  name_no: { kind: "string", required: true },
+  color: { kind: "string", required: true },
+  // Three characters, because it is drawn inside a module on the rail and
+  // there is no room for a fourth.
+  abbreviation: { kind: "string", required: true, maxLength: 3 },
+  can_have_circuit: { kind: "boolean", default: false },
+  can_have_ampere: { kind: "boolean", default: false },
+};
+
+export const MODULE_TYPE_UPDATE: Shape = {
+  name_no: { kind: "string" },
+  color: { kind: "string" },
+  abbreviation: { kind: "string", maxLength: 3 },
+  can_have_circuit: { kind: "boolean" },
+  can_have_ampere: { kind: "boolean" },
+};
+
+export function moduleTypeRead(
+  row: typeof s.moduleTypeDefinition.$inferSelect,
+  usageCount: number,
+) {
+  return {
+    id: row.id,
+    key: row.key,
+    name_no: row.nameNo,
+    color: row.color,
+    abbreviation: row.abbreviation,
+    can_have_circuit: row.canHaveCircuit,
+    can_have_ampere: row.canHaveAmpere,
+    is_builtin: row.isBuiltin,
+    created_at: iso(row.createdAt),
+    usage_count: usageCount,
+  };
+}

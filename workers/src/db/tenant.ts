@@ -24,7 +24,7 @@
 import { and, eq, SQL, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
-import type { SQLiteTable } from "drizzle-orm/sqlite-core";
+import type { SQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 
 import * as schema from "../schema";
 
@@ -125,6 +125,27 @@ export class Tenant {
       .where(this.scoped(table, where))
       .get();
     return Number(row?.n ?? 0);
+  }
+
+  /**
+   * How many rows carry each value of one column, scoped.
+   *
+   * For the module-type listing, which needs a usage count per type. The
+   * alternative was reading every module and counting in JavaScript, or a
+   * query per type — one is wasteful and the other is worse.
+   */
+  async countBy<T extends TenantTable>(
+    table: T,
+    column: SQLiteColumn,
+    where?: SQL,
+  ): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({ value: column, n: sql<number>`count(*)` })
+      .from(table as SQLiteTable)
+      .where(this.scoped(table, where))
+      .groupBy(column)
+      .all();
+    return new Map(rows.map((row) => [String(row.value), Number(row.n)]));
   }
 
   /** Insert, stamping the organization.

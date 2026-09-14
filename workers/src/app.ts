@@ -21,8 +21,13 @@ import { type Bindings, ConfigError } from "./config";
 import type { App, Env } from "./context";
 import { forOrganization } from "./db";
 import { authRoutes } from "./routes/auth";
+import { changelogRoutes } from "./routes/changelog";
+import { channelRoutes } from "./routes/channels";
 import { circuitRoutes } from "./routes/circuits";
+import { connectionPointRoutes } from "./routes/connectionPoints";
+import { equipmentRoutes } from "./routes/equipment";
 import { moduleRoutes } from "./routes/modules";
+import { moduleTypeRoutes } from "./routes/moduleTypes";
 import { panelRoutes } from "./routes/panels";
 import { propertyRoutes } from "./routes/properties";
 
@@ -71,6 +76,11 @@ export function createApp(): App {
   app.route("/api/panels", panelRoutes);
   app.route("/api/modules", moduleRoutes);
   app.route("/api/circuits", circuitRoutes);
+  app.route("/api/connection_points", connectionPointRoutes);
+  app.route("/api/equipment", equipmentRoutes);
+  app.route("/api/channels", channelRoutes);
+  app.route("/api/changelog", changelogRoutes);
+  app.route("/api/module_types", moduleTypeRoutes);
 
   app.notFound((c) => c.json({ detail: "Not Found" }, 404));
 

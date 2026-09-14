@@ -176,3 +176,71 @@ erstatter er fortsatt en kontraktsendring.
 mellom tester tømte også de innebygde modultypene, så hver modul svarte
 422. Det kom ut som «expected 422 to be 404» fra en URL med ordet
 `undefined` i seg. Fixturen sjekker statuskoden nå.
+
+---
+
+# Økt 6: resten av treet
+
+Koblingspunkter, utstyr, kanaler, endringslogg og modultyper — 28
+endepunkter. Kontraktsuiten er nå grønn på alt unntatt filer og
+import/eksport, som er økt 7. Coverage-testen navngir de sju som står
+igjen, og alle sju er filendepunkter.
+
+## Copy-on-write er den ene som trengte to kontoer
+
+Åtte innebygde modultyper deles av alle. Å redigere en av dem på stedet
+ville endret fargen på *alles* automatsikring, så en redigering lager i
+stedet organisasjonens egen versjon: samme nøkkel, skygger for den delte,
+og sletter man kopien er man tilbake til standarden.
+
+Kontraktsuiten kjører som én konto. Den kan vise at det blir en kopi. Den
+kan ikke vise det kopien finnes for — at den *andre* kunden fortsatt ser
+den opprinnelige. Den testen krever to kontoer, og på D1 finnes det
+ingenting annet som håndhever det.
+
+## Skrivinger som må lande hele
+
+Å slette utstyr betyr fire ting: kanalene, loggpostene som peker på det,
+raden selv, og en ny loggpost som forteller at det ble slettet. Én batch.
+
+Python-versjonen klarte å glemme én av dem og svare 500 for det helt
+alminnelige tilfellet — nøyaktig samme feil som med skap og moduler,
+funnet hver for seg, måneder fra hverandre.
+
+## Loggen sorteres på id i tillegg til tidspunkt
+
+`changed_at` har sekundoppløsning, og postene som betyr noe skrives
+samtidig: å opprette utstyr logger det og legger til kanalene i én batch.
+Sorterte man bare på tidspunkt ble de stående likt, og SQLite brøt
+uavgjortheten på rowid — altså eldste først, det stikk motsatte av hva
+sorteringen er til for.
+
+Det viste seg som en test som feilet med `[25,26,27,28]` mot
+`[28,27,26,25]`. Python-versjonen har samme svakhet; den er ikke båret
+over.
+
+## To hull til lukket
+
+En loggpost kunne bære en annen kundes `circuit_id`, og en kanal kunne
+peke på en annen kundes kurs. Begge ville ligget i vår konto og beskrevet
+deres anlegg. Begge er 404 nå.
+
+## Én asymmetri er *ikke* rettet
+
+`POST /api/connection_points` skriver ingen loggpost;
+`POST /api/circuits/{id}/connection_points` gjør det. Det er ikke til å
+forsvare, men det er synlig i kontrakten, og denne omskrivingen endrer
+ikke kontrakten noe sted. Det står som en kommentar i koden slik at det
+leses som et valg og ikke som en forglemmelse.
+
+---
+
+## Hva opprydningen mellom tester lærte oss, igjen
+
+Første forsøk beholdt innebygde modultyper med `where is_builtin = 0`.
+Men en kundes copy-on-write-kopi beholder `is_builtin = true` — det er
+det som sorterer den sammen med standardtypene — så de radene ble stående
+igjen, holdt sin organisasjon i live, og knakk hele opprydningen.
+
+Det som gjør en rad delt er å ikke ha en eier. Betingelsen er
+`organization_id` nå.
