@@ -25,7 +25,13 @@ export class Client {
         [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; "),
       );
     }
-    if (init.body !== undefined) headers.set("content-type", "application/json");
+    // Only for JSON. A FormData body carries its own multipart type with
+    // the boundary in it, and overwriting that makes every upload arrive
+    // as an unparseable blob — which shows up as a 422 about a missing
+    // file field, several layers from the cause.
+    if (typeof init.body === "string") {
+      headers.set("content-type", "application/json");
+    }
 
     const ctx = createExecutionContext();
     const response = await app.fetch(

@@ -396,3 +396,23 @@ export function moduleTypeRead(
     usage_count: usageCount,
   };
 }
+
+// --- File ------------------------------------------------------------------
+
+/**
+ * Deliberately without storage_key.
+ *
+ * The client fetches bytes through /api/files/{id}/content, where the
+ * tenant check runs. Handing out the key invites someone to try reaching
+ * the bucket directly, and the contract asserts it is absent.
+ */
+export function fileRead(row: typeof s.file.$inferSelect) {
+  return {
+    id: row.id,
+    connection_point_id: row.connectionPointId,
+    equipment_id: row.equipmentId,
+    filename: row.filename,
+    mimetype: row.mimetype,
+    uploaded_at: iso(row.uploadedAt),
+  };
+}

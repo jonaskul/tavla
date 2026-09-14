@@ -29,8 +29,10 @@ import {
   type EquipmentType,
   channelRead,
   equipmentRead,
+  fileRead,
 } from "../schemas";
 import { readBody } from "../validate";
+import { readForm, storeUpload } from "./files";
 import { entryOp } from "./log";
 import { must } from "./lookup";
 
@@ -179,4 +181,23 @@ equipmentRoutes.post("/:equipment_id/channels", async (c) => {
     watt: body.watt as number | null,
   });
   return c.json(channelRead(row));
+});
+
+// --- Nested files ----------------------------------------------------------
+
+equipmentRoutes.get("/:equipment_id/files", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("equipment_id"));
+  await owned(tenant, id);
+  return c.json((await tenant.list(s.file, eq(s.file.equipmentId, id))).map(fileRead));
+});
+
+equipmentRoutes.post("/:equipment_id/files", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("equipment_id"));
+  await owned(tenant, id);
+
+  const form = await readForm(c.req.raw);
+  const row = await storeUpload(c.env, tenant, form, { equipmentId: id });
+  return c.json(fileRead(row));
 });

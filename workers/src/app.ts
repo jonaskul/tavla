@@ -26,6 +26,8 @@ import { channelRoutes } from "./routes/channels";
 import { circuitRoutes } from "./routes/circuits";
 import { connectionPointRoutes } from "./routes/connectionPoints";
 import { equipmentRoutes } from "./routes/equipment";
+import { exportRoutes } from "./routes/export";
+import { fileRoutes } from "./routes/files";
 import { moduleRoutes } from "./routes/modules";
 import { moduleTypeRoutes } from "./routes/moduleTypes";
 import { panelRoutes } from "./routes/panels";
@@ -81,6 +83,8 @@ export function createApp(): App {
   app.route("/api/channels", channelRoutes);
   app.route("/api/changelog", changelogRoutes);
   app.route("/api/module_types", moduleTypeRoutes);
+  app.route("/api/files", fileRoutes);
+  app.route("/api/export", exportRoutes);
 
   app.notFound((c) => c.json({ detail: "Not Found" }, 404));
 

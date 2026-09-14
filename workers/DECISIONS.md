@@ -244,3 +244,97 @@ igjen, holdt sin organisasjon i live, og knakk hele opprydningen.
 
 Det som gjør en rad delt er å ikke ha en eier. Betingelsen er
 `organization_id` nå.
+
+---
+
+# Økt 7: filer og import/eksport
+
+12 endepunkter. **Kontraktsuiten er grønn: 77 av 77**, medregnet
+coverage-testen som beviser at hvert eneste endepunkt faktisk ble truffet.
+Det er punktet der omskrivingen er ferdig etter definisjonen fra økt 1 —
+ikke når koden ser riktig ut.
+
+## R2 er den ene delen som ble enklere
+
+En binding, ikke en S3-klient. Ingen endepunkt, ingen nøkler, ingen
+signering, ingen boto3. `storage.py` finnes i stor grad for å skjule en
+S3-klient bak et grensesnitt slik at en lokal utsjekk slipper
+legitimasjon — et problem som ikke oppstår her.
+
+Utlevering går fortsatt gjennom applikasjonen, ikke via presignerte URL-er.
+En presignert URL virker for den som holder den, og dette er bilder fra
+innsiden av kunders hjem. Det ble til og med billigere: `new
+Response(object.body)` strømmer, mens Python bufret hele fila.
+
+## Størrelsen avvises før kroppen leses
+
+Python leste hele opplastingen inn i minnet og spurte *så* om den var for
+stor. Det er et tjenestenektangrep forkledd som en valideringsfeil. En
+Worker har et hardt minnetak per isolat, så `Content-Length` sjekkes
+først, og den nøyaktige sjekken kommer etterpå.
+
+## Importen: fem runder, ikke én transaksjon
+
+D1 nekter `BEGIN`. `batch()` er atomisk og gir tilbake id-ene hver setning
+genererte — begge deler verifisert mot ekte lokal D1, ikke antatt.
+
+    1. anlegget
+    2. hvert skap
+    3. hver kurs          <- før noe som helst refererer til én
+    4. moduler, koblingspunkter, utstyr
+    5. kanaler            <- trenger utstyrs-id-ene fra runde 4
+
+Runde 3 er grunnen til formen: en kanal kan betjene en kurs under et annet
+skap, så alle kurser må finnes før noe peker på én.
+
+**Rundene er ikke atomiske med hverandre, og det kan ikke gjenopprettes på
+D1.** To ting kommer nær:
+
+- Alt som kan avvises, avvises før runde 1.
+- Feiler en senere runde, slettes anlegget og alt under det. Opprydningen
+  er selv én batch.
+
+Dette er regningen for heltalls-primærnøkler fra økt 2. UUID-er ville
+gjort hele importen til én atomisk batch. Heltall var riktig valg —
+kontrakten sier `id: int` og frontenden legger dem i URL-er — men det er
+her det betales.
+
+## To feil som testene fant, ikke jeg
+
+**Valideringen strippet de nestede listene.** `check` beholder bare
+feltene formen navngir, men nestingen ligger i nøkler ingen form navngir.
+Importen opprettet altså anlegget og skapene og stoppet — stille.
+Rundturstesten var det eneste som sa fra.
+
+**Valideringen sjekket bare at feltene fantes, ikke hva de var.** En modul
+med `"row": "øverst"` slapp gjennom og ble en databasefeil midt i en faset
+import. Hele argumentet om at «alt avvises før runde 1» hvilte på en sjekk
+som ikke gjorde det. Nå brukes samme feltvalidator som resten av API-et.
+
+## Målt, ikke antatt
+
+En lokal D1-batch tok **10 000 setninger** uten å klage. Grensen er altså
+ikke praktisk for importer av realistisk størrelse. Men dette er
+miniflare — grensene på ekte D1 kan være strammere, og en import av et
+stort bygg er verdt å prøve mot produksjon i økt 8 før det kalles trygt.
+
+## Én ting som koster penger å glemme
+
+Slettingen tar raden først, så objektet. Feiler det andre steget, ligger
+objektet igjen i R2 uten at noen kan nå det — og til forskjell fra en
+strøfil på lokal disk er det en post på fakturaen til evig tid. Det logges,
+men den riktige løsningen er en lifecycle-regel på bøtta. Det hører til
+økt 8.
+
+---
+
+## Om testklienten
+
+Den satte `content-type: application/json` på alt som hadde en kropp, også
+`FormData` — som bærer sin egen multipart-type med grensestrengen i seg.
+Hver opplasting kom fram som en uleselig klump, og det viste seg som en
+422 om et manglende filfelt, flere lag fra årsaken.
+
+Kontraktsuiten var upåvirket, siden httpx gjør dette riktig. Det er verdt
+å merke seg: den eneste grunnen til at dette ble oppdaget som en feil i
+testklienten og ikke i koden, var at kontrakten allerede var grønn.

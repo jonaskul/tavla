@@ -24,9 +24,11 @@ import {
   type ConnectionPointType,
   changelogRead,
   connectionPointRead,
+  fileRead,
 } from "../schemas";
 import { readBody } from "../validate";
 import { newestFirst } from "./changelog";
+import { readForm, storeUpload } from "./files";
 import { entryOp } from "./log";
 import { must } from "./lookup";
 
@@ -158,4 +160,25 @@ connectionPointRoutes.get("/:cp_id/changelog", async (c) => {
     newestFirst,
   );
   return c.json(rows.map(changelogRead));
+});
+
+// --- Nested files ----------------------------------------------------------
+
+connectionPointRoutes.get("/:cp_id/files", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("cp_id"));
+  await owned(tenant, id);
+  return c.json(
+    (await tenant.list(s.file, eq(s.file.connectionPointId, id))).map(fileRead),
+  );
+});
+
+connectionPointRoutes.post("/:cp_id/files", async (c) => {
+  const tenant = c.get("tenant");
+  const id = idOf(c.req.param("cp_id"));
+  await owned(tenant, id);
+
+  const form = await readForm(c.req.raw);
+  const row = await storeUpload(c.env, tenant, form, { connectionPointId: id });
+  return c.json(fileRead(row));
 });

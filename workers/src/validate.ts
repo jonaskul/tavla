@@ -67,14 +67,25 @@ function coerceBoolean(value: unknown): boolean | undefined {
   return undefined;
 }
 
-interface Problem {
+export interface Problem {
   type: string;
   loc: string[];
   msg: string;
 }
 
-function checkOne(name: string, field: Field, raw: unknown, problems: Problem[]): unknown {
-  const at = ["body", name];
+/**
+ * One value against one field.
+ *
+ * `at` is the path for the error message, passed in rather than assumed to
+ * be ["body", name] — the import walks a nested tree and its errors have
+ * to say which panel, which circuit.
+ */
+export function checkField(
+  field: Field,
+  raw: unknown,
+  at: string[],
+  problems: Problem[],
+): unknown {
 
   if (raw === null) {
     if (field.nullable !== false && !field.required) return null;
@@ -190,7 +201,7 @@ export async function readBody(
       continue;
     }
 
-    const value = checkOne(name, field, raw, problems);
+    const value = checkField(field, raw, ["body", name], problems);
     if (value !== undefined) out[name] = value;
   }
 
