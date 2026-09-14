@@ -23,6 +23,18 @@ beforeAll(async () => {
  * simply be stood down. Deleting what will delete, repeatedly, gets there
  * without anyone maintaining a topological order by hand.
  */
+/**
+ * Rows that are schema, not test data.
+ *
+ * The built-in module types are written by migration 0001 and shared by
+ * every tenant. Clearing them made every module in these tests answer
+ * "Unknown module type: breaker" — a 422 that looked like a validation
+ * bug and was really the fixture eating the seed.
+ */
+const KEEP: Record<string, string> = {
+  moduletypedefinition: " where is_builtin = 0",
+};
+
 beforeEach(async () => {
   const { results } = await env.DB.prepare(
     "select name from sqlite_master where type = 'table' " +
@@ -35,7 +47,7 @@ beforeEach(async () => {
     const blocked: string[] = [];
     for (const name of pending) {
       try {
-        await env.DB.prepare(`delete from "${name}"`).run();
+        await env.DB.prepare(`delete from "${name}"${KEEP[name] ?? ""}`).run();
       } catch {
         blocked.push(name); // a child still holds rows; next pass
       }

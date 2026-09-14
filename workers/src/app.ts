@@ -18,15 +18,15 @@ import { HTTPException } from "hono/http-exception";
 
 import * as auth from "./auth";
 import { type Bindings, ConfigError } from "./config";
-import { Tenant, forOrganization } from "./db";
+import type { App, Env } from "./context";
+import { forOrganization } from "./db";
 import { authRoutes } from "./routes/auth";
+import { circuitRoutes } from "./routes/circuits";
+import { moduleRoutes } from "./routes/modules";
+import { panelRoutes } from "./routes/panels";
+import { propertyRoutes } from "./routes/properties";
 
-export interface Variables {
-  principal: auth.Principal;
-  tenant: Tenant;
-}
-
-export type App = Hono<{ Bindings: Bindings; Variables: Variables }>;
+export type { App, Variables } from "./context";
 
 /**
  * Reachable without signing in.
@@ -44,7 +44,7 @@ export const PUBLIC_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 export function createApp(): App {
-  const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+  const app = new Hono<Env>();
 
   app.use("*", async (c, next) => {
     if (PUBLIC_PATHS.has(new URL(c.req.url).pathname)) return next();
@@ -67,6 +67,10 @@ export function createApp(): App {
   app.get("/api/health", (c) => c.json({ status: "ok" }));
 
   app.route("/api/auth", authRoutes);
+  app.route("/api/properties", propertyRoutes);
+  app.route("/api/panels", panelRoutes);
+  app.route("/api/modules", moduleRoutes);
+  app.route("/api/circuits", circuitRoutes);
 
   app.notFound((c) => c.json({ detail: "Not Found" }, 404));
 

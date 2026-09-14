@@ -106,3 +106,73 @@ mens utrullingen feilet.
 typesjekk i det hele tatt: både wrangler og vitest stripper typer uten å
 se på dem, så `strict`-feil var usynlige. Det ville vært et dårlig sted å
 stå med 56 endepunkter igjen å skrive.
+
+---
+
+# Økt 5: kjernen
+
+23 endepunkter: anlegg, skap, moduler, kurser. Fire ting er verdt å vite.
+
+## Scoping ble uniform, og det er en faktisk endring
+
+Python-versjonen filtrerte på organisasjon i `routers/properties.py` og
+ingen andre steder. `panels.py`, `circuits.py` og `modules.py` nevner ikke
+organisasjon med ett ord — de lente seg helt på row-level security i
+PostgreSQL.
+
+Det virker i produksjon. Men det betyr at isolasjonen for tre firedeler av
+API-et lå i en migrasjon i stedet for i koden, og at de samme tre ruterne
+lekker på tvers av kunder om de kjøres mot SQLite.
+
+Her går alt gjennom `Tenant`, så det er ikke noe å huske. `core.test.ts`
+logger inn som to ekte kontoer og prøver seg: listing, oppslag, nøstede
+ruter, spørrestrengfiltre, skriving og referanser.
+
+## En modul kan ikke lenger peke på en annen kundes kurs
+
+Ingenting sjekket at `circuit_id` fantes, langt mindre at den var din.
+Fremmednøkkelen ville tatt en som ikke fantes — som en 500 — og en som
+tilhørte noen andre ville blitt lagret uten innsigelse.
+
+Hullet er lite, siden kursen er usynlig når den leses tilbake, men en
+referanse på tvers av kunder skal ikke kunne skrives i det hele tatt.
+Nå er det 404.
+
+## Sletting skjer i én batch
+
+Å slette et skap sletter modulene i det; å slette en kurs frigjør
+modulene og kanalene som pekte på den, og fjerner endringsloggen.
+
+Ikke for hastighet: en kurs som er borte mens et automatsikring fortsatt
+peker på den tegner et skap koblet til ingenting, og det er en verre
+tilstand enn begge ender av operasjonen. D1 har ingen interaktiv
+transaksjon, men `batch()` lander helt eller ikke i det hele tatt.
+
+Det er derfor `Tenant` fikk `atomically` og `op` i denne økten. Uten dem
+måtte tenant-filteret skrives for hånd akkurat der — i den ene
+konstruksjonen som ikke går gjennom klassen.
+
+## Egen modultype vinner over den innebygde
+
+Python slo opp modultype på nøkkel uten sortering, og ville i praksis
+funnet den innebygde selv om organisasjonen hadde sin egen med samme
+nøkkel. Det er en latent feil snarere enn et valg, så den er ikke båret
+over: her vinner din egen definisjon.
+
+De innebygde typene skrives av migrasjon 0001 i stedet for av en
+oppstartsfunksjon. En Worker har ingen oppstart, og en «finnes de
+ennå»-sjekk per forespørsel ville blitt en spørring i hver modulvisning.
+
+---
+
+## To ting testoppsettet lærte oss
+
+**Feltvalidering trengte pydantics slappe modus.** Tall kan komme som
+strenger, fordi frontenden parser skjemafelt i et dusin ulike filer og ett
+av dem kommer til å la være. Å være strengere enn implementasjonen man
+erstatter er fortsatt en kontraktsendring.
+
+**Fixturen som ikke sjekket svaret skjulte en ekte feil.** Opprydningen
+mellom tester tømte også de innebygde modultypene, så hver modul svarte
+422. Det kom ut som «expected 422 to be 404» fra en URL med ordet
+`undefined` i seg. Fixturen sjekker statuskoden nå.

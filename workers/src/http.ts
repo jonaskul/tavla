@@ -10,8 +10,18 @@
 
 import { HTTPException } from "hono/http-exception";
 
-/** A refusal the client is meant to read: 400, 401, 404, 409. */
-export function fail(status: 400 | 401 | 403 | 404 | 409, detail: string): HTTPException {
+/**
+ * A refusal the client is meant to read.
+ *
+ * 422 is in the list because FastAPI's own 422 body — a list under
+ * "detail" — is only what its *validation* produces. An explicit
+ * HTTPException(422, detail="...") answers with a plain string, and two
+ * endpoints rely on that. See `invalid` for the other shape.
+ */
+export function fail(
+  status: 400 | 401 | 403 | 404 | 409 | 422,
+  detail: string,
+): HTTPException {
   return new HTTPException(status, {
     res: Response.json({ detail }, { status }),
   });
@@ -79,4 +89,38 @@ export function requireEmail(body: Record<string, unknown>, field: string): stri
     ]);
   }
   return value;
+}
+
+/**
+ * An integer query parameter, or undefined when it was not given.
+ *
+ * A parameter that is present but not a number is a 422, as FastAPI
+ * answered — not silently ignored, which would quietly return the whole
+ * list where the caller asked for one panel's worth.
+ */
+export function intQuery(url: string, name: string): number | undefined {
+  const raw = new URL(url).searchParams.get(name);
+  if (raw === null) return undefined;
+  if (!/^-?\d+$/.test(raw.trim())) {
+    throw invalid([
+      { type: "int_parsing", loc: ["query", name], msg: "Input should be a valid integer" },
+    ]);
+  }
+  return Number(raw);
+}
+
+/**
+ * An integer path parameter.
+ *
+ * /api/properties/abc is a 422 and not a 404: the id is malformed, which
+ * is a different thing from naming something that is not there, and
+ * FastAPI told them apart.
+ */
+export function intParam(raw: string, name: string): number {
+  if (!/^\d+$/.test(raw)) {
+    throw invalid([
+      { type: "int_parsing", loc: ["path", name], msg: "Input should be a valid integer" },
+    ]);
+  }
+  return Number(raw);
 }

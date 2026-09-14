@@ -22,6 +22,7 @@
  */
 
 import { and, eq, SQL, sql } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 
@@ -203,14 +204,67 @@ export class Tenant {
    * batch() is atomic: a batch that fails leaves nothing behind. Verified
    * against local D1 before this was designed around.
    *
-   * The statements still have to be built by the caller, so this is the one
-   * place scoping is not automatic. Keep the statement list short and
-   * obvious, and prefer the methods above wherever a batch is not required.
+   * The statements come from `op` below, which scopes exactly as the
+   * methods above do. That is the whole point of the split: deleting a
+   * panel means deleting its modules too, and a batch built from raw
+   * Drizzle would be the one place in the codebase where the tenant filter
+   * is written by hand.
    */
-  async batch(statements: Parameters<Db["batch"]>[0]): Promise<unknown> {
+  async atomically(statements: BatchItem<"sqlite">[]): Promise<unknown> {
     if (statements.length === 0) return [];
-    return this.db.batch(statements);
+    // D1's batch signature insists on a non-empty tuple; the guard above is
+    // what actually makes that true.
+    return this.db.batch(
+      statements as unknown as Parameters<Db["batch"]>[0],
+    );
   }
+
+  /**
+   * The same writes, built but not sent, for `atomically`.
+   *
+   * Each mirrors the method of the same name and shares its scoping, so
+   * there is no second implementation to keep in step.
+   */
+  readonly op = {
+    insert: <T extends TenantTable>(
+      table: T,
+      values: Omit<T["$inferInsert"], "organizationId">,
+    ) => {
+      const { organizationId: _ignored, ...rest } = values as Record<string, unknown>;
+      return this.db
+        .insert(table as SQLiteTable)
+        .values({ ...rest, organizationId: this.organizationId } as never)
+        .returning();
+    },
+
+    update: <T extends TenantTable>(
+      table: T,
+      id: number,
+      values: Partial<Omit<T["$inferInsert"], "organizationId" | "id">>,
+    ) => this.op.updateWhere(table, eq((table as unknown as { id: never }).id, id as never), values),
+
+    updateWhere: <T extends TenantTable>(
+      table: T,
+      where: SQL,
+      values: Partial<Omit<T["$inferInsert"], "organizationId" | "id">>,
+    ) => {
+      const { organizationId: _ignored, id: _id, ...rest } = values as Record<string, unknown>;
+      return this.db
+        .update(table as SQLiteTable)
+        .set(rest as never)
+        .where(this.scoped(table, where))
+        .returning();
+    },
+
+    remove: <T extends TenantTable>(table: T, id: number) =>
+      this.op.removeWhere(table, eq((table as unknown as { id: never }).id, id as never)),
+
+    removeWhere: <T extends TenantTable>(table: T, where: SQL) =>
+      this.db
+        .delete(table as SQLiteTable)
+        .where(this.scoped(table, where))
+        .returning(),
+  };
 }
 
 /**
