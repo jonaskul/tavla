@@ -29,11 +29,24 @@ note() { printf '    %s\n' "$1"; }
 # --- Hvem er vi ------------------------------------------------------------
 
 say "Sjekker innlogging"
-$WRANGLER whoami >/dev/null 2>&1 || {
-  echo "Ikke innlogget. Kjør: npx wrangler login" >&2
+# whoami avslutter med 0 selv når man ikke er innlogget — den rapporterer
+# jo vellykket at man ikke er det. Sjekket på teksten i stedet, etter at
+# den første versjonen av dette slapp forbi og lot skriptet feile flere
+# steg senere med Cloudflares egen feilmelding i stedet for sin egen.
+WHOAMI=$($WRANGLER whoami 2>&1 || true)
+if printf '%s' "$WHOAMI" | grep -q "not authenticated"; then
+  cat >&2 <<'LOGIN'
+    Ikke innlogget på Cloudflare.
+
+      npx wrangler login
+
+    Eller, uten nettleser: lag et API-token med rettighetene Workers
+    Scripts:Edit, D1:Edit og Workers R2 Storage:Edit, og sett det som
+    CLOUDFLARE_API_TOKEN før du kjører dette skriptet på nytt.
+LOGIN
   exit 1
-}
-$WRANGLER whoami | sed -n '/Account Name/,/^$/p' || true
+fi
+printf '%s\n' "$WHOAMI" | grep -iE "account name|account id" || true
 
 # --- D1 --------------------------------------------------------------------
 
