@@ -40,9 +40,20 @@ if printf '%s' "$WHOAMI" | grep -q "not authenticated"; then
 
       npx wrangler login
 
-    Eller, uten nettleser: lag et API-token med rettighetene Workers
-    Scripts:Edit, D1:Edit og Workers R2 Storage:Edit, og sett det som
-    CLOUDFLARE_API_TOKEN før du kjører dette skriptet på nytt.
+    Uten nettleser — CI, en container, en agent — lag et API-token med
+    disse tre kontorettighetene:
+
+      Workers Scripts    Edit    (deploy, secret put)
+      D1                 Edit    (opprette basen, kjøre migrasjoner)
+      Workers R2 Storage Edit    (opprette bøtta)
+
+    og sett:
+
+      CLOUDFLARE_API_TOKEN=...
+      CLOUDFLARE_ACCOUNT_ID=...   # slipper Account Settings:Read
+      WRANGLER_SEND_METRICS=false # slipper sparrow.cloudflare.com
+
+    Da er api.cloudflare.com det eneste verten som må være åpen.
 LOGIN
   exit 1
 fi
