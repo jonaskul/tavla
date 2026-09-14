@@ -199,6 +199,6 @@ To ting igjen, begge i et dashbord:
 
 Så, for å se at det faktisk virker:
 
-   python scripts/smoke_test.py https://tavla.digibygg.io
+   npm run smoke -- https://tavla.digibygg.io
 
 DONE

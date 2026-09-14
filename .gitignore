@@ -1,18 +1,11 @@
-# Python
-__pycache__/
-*.py[cod]
-venv/
-.env
-*.db
-
 # Node
 node_modules/
 dist/
 .vite/
 
-# Uploads (ikke commit filer, bare struktur)
-uploads/*
-!uploads/.gitkeep
+# Wrangler
+.wrangler/
+.dev.vars
 
 # OS
 .DS_Store
@@ -21,8 +14,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-
-# Workers
-workers/node_modules/
-workers/.wrangler/
-workers/.dev.vars

@@ -1,6 +1,21 @@
 # Beslutninger for Workers-versjonen
 
-Fire valg som er dyre å snu. Tatt i økt 2, før noe ble skrevet.
+Loggen over hvorfor koden ser ut som den gjør, økt for økt — inkludert
+hva som ble valgt bort og hva det kostet. Les den før du snur på noe som
+virker rart; flere av avgjørelsene ser vilkårlige ut helt til man vet hva
+alternativet gjorde.
+
+**Om referansene til «Python-versjonen».** Tavla var først FastAPI og
+PostgreSQL, og den implementasjonen ble skrevet om til Workers over sju
+økter. Den gamle koden ligger ikke i repoet lenger, men den er
+referansepunktet for det meste her: hva som virket, hva som gikk galt, og
+hva D1 ikke kan gjøre som PostgreSQL kunne. Historikken har den fortsatt.
+
+---
+
+## Fire valg som er dyre å snu
+
+Tatt i økt 2, før noe ble skrevet.
 
 ## Primærnøkler: heltall, ikke UUID
 
@@ -61,9 +76,9 @@ tilfeldig, og sett ut som en feil i koden.
 `CF-Connecting-IP` satt av kanten og kan ikke forfalskes, så per-IP-taket
 er faktisk per IP.
 
-Dette fjerner samtidig fella som står dokumentert i `deploy/nginx.conf`:
-uvicorn stolte som standard bare på `127.0.0.1`, så bak en proxy delte
-alle kallere én adresse og taket låste ute absolutt alle.
+Dette fjernet samtidig en felle Python-versjonen hadde: uvicorn stolte
+som standard bare på `X-Forwarded-For` fra `127.0.0.1`, så bak en proxy
+delte alle kallere én adresse og taket låste ute absolutt alle.
 
 ## Ingen databasehåndtak i `routes/auth.ts`
 

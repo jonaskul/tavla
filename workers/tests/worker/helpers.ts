@@ -14,10 +14,22 @@ import { setMailer } from "../../src/mail";
 
 const app = createApp();
 
+/**
+ * Notified of every request a client makes.
+ *
+ * The contract tests use this to record which endpoint each call hit, so
+ * "every endpoint is covered" can be checked rather than believed.
+ */
+export type Observer = (method: string, path: string) => void;
+
 export class Client {
   private cookies = new Map<string, string>();
 
+  constructor(private readonly observe?: Observer) {}
+
   async fetch(path: string, init: RequestInit = {}): Promise<Response> {
+    this.observe?.(init.method ?? "GET", path);
+
     const headers = new Headers(init.headers);
     if (this.cookies.size > 0) {
       headers.set(
