@@ -97,19 +97,27 @@ fi
 # --- Produksjonsinnstillinger ----------------------------------------------
 
 say "Produksjonsvariabler"
-if grep -q 'TAVLA_ENV = "development"' wrangler.toml; then
+if grep -q 'TAVLA_ENV = "production"' wrangler.toml; then
+  note "TAVLA_ENV = production"
+else
   cat >&2 <<'WARN'
-    wrangler.toml står fortsatt på development.
+    wrangler.toml står ikke på production.
 
-    Sett disse før utrulling, ellers starter workeren i utviklingsmodus
-    og godtar en manglende SESSION_SECRET i stillhet:
+    I utviklingsmodus godtar workeren en manglende SESSION_SECRET i
+    stillhet, og da kan en kode utstedt av ett isolat ikke verifiseres av
+    det neste. Innlogging ville feilet tilsynelatende tilfeldig.
 
       [vars]
       TAVLA_ENV = "production"
-      AUTH_MODE = "session"
-      AUTH_FROM_EMAIL = "tavla@tavla.digibygg.io"
-      COOKIE_DOMAIN = "tavla.digibygg.io"
 WARN
+  exit 1
+fi
+
+if grep -q 'AUTH_FROM_EMAIL' wrangler.toml; then
+  note "AUTH_FROM_EMAIL: $(grep AUTH_FROM_EMAIL wrangler.toml | head -1 | cut -d'"' -f2)"
+  note "adressen må ligge under et domene som er verifisert i Resend"
+else
+  echo "    AUTH_FROM_EMAIL mangler — kodene havner i loggen i stedet for i innboksen." >&2
   exit 1
 fi
 

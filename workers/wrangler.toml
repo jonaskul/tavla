@@ -37,9 +37,31 @@ not_found_handling = "single-page-application"
 # tilbake til appen.
 run_worker_first = ["/api/*"]
 
+# Denne fila beskriver produksjon.
+#
+# Med vilje den veien: en glemt flaggverdi skal gi det strengeste
+# oppsettet, ikke det slappeste. Lokal utvikling overstyrer i .dev.vars,
+# som ikke er committet — så det er utviklingsoppsettet som krever et
+# bevisst valg, ikke produksjonsoppsettet.
 [vars]
-TAVLA_ENV = "development"
+TAVLA_ENV = "production"
 AUTH_MODE = "session"
 
-# Secrets are set with `wrangler secret put`, never here:
+# Avsenderadressen. Ikke hemmelig, så den hører hjemme her. Uten både
+# denne og RESEND_API_KEY skrives innloggingskodene til loggen i stedet
+# for å sendes — se src/mail.ts.
+AUTH_FROM_EMAIL = "tavla@tavla.digibygg.io"
+
+# COOKIE_DOMAIN er bevisst ikke satt.
+#
+# Uten den blir sesjonscookien host-only: nettleseren sender den bare til
+# tavla.digibygg.io, og ikke til noe annet under digibygg.io. Setter man
+# domenet eksplisitt, gjelder cookien for alle subdomener — inkludert
+# framtidige som ikke er Tavla. Host-only er strammere, og vi trenger
+# ikke det andre.
+#
+# SameSite=Lax holder uansett, siden nettlesere regner «samme nettsted»
+# ut fra registrerbart domene: appen og API-et er samme opphav her.
+
+# Hemmeligheter settes med `wrangler secret put`, aldri her:
 #   SESSION_SECRET, RESEND_API_KEY

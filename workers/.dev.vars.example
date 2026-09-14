@@ -1,0 +1,27 @@
+# Mal for lokal utvikling.
+#
+#     cp .dev.vars.example .dev.vars
+#
+# Selve .dev.vars er ikke committet, fordi det er der en ekte
+# RESEND_API_KEY havner om man vil teste e-postutsending lokalt.
+# Verdiene under er ikke hemmelige og virker som de står.
+#
+# wrangler.toml beskriver produksjon, så det er denne fila som gjør
+# oppsettet til et utviklingsoppsett. Det er den veien rundt med vilje:
+# en glemt overstyring gir strengere oppførsel, ikke slappere.
+TAVLA_ENV=development
+
+# Fast, ikke tilfeldig. En engangskode utstedt av ett isolat må kunne
+# verifiseres av det neste, ellers feiler innlogging tilsynelatende
+# tilfeldig.
+SESSION_SECRET=lokal-utviklingshemmelighet
+
+# wrangler dev snakker http, og en Secure-cookie ville aldri kommet
+# tilbake. Flagget er riktig; transporten lokalt er det ikke.
+COOKIE_SECURE=0
+
+# Valgfritt: sett disse to for å faktisk sende e-post lokalt i stedet for
+# å skrive koden til loggen. Uten dem skriver src/mail.ts den til loggen,
+# som er hvor scripts/signin-hjelperne leser den fra.
+# RESEND_API_KEY=re_...
+# AUTH_FROM_EMAIL=tavla@tavla.digibygg.io
