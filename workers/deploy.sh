@@ -113,6 +113,15 @@ WARN
   exit 1
 fi
 
+# --- Frontenden ------------------------------------------------------------
+#
+# Workeren serverer den selv, fra ../frontend/dist. Bygges her så en
+# utrulling aldri sender en gammel bunt: det er en feil som ser ut som at
+# endringen ikke virket, ikke som at den ikke ble rullet ut.
+
+say "Bygger frontenden"
+(cd ../frontend && npm ci --silent && npm run build)
+
 # --- Migrasjoner -----------------------------------------------------------
 #
 # Før utrulling, ikke etter: en worker som er live mot et skjema som ennå

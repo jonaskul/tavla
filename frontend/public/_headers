@@ -1,0 +1,14 @@
+# Headerne nginx satte, for filene workeren ikke ser.
+#
+# Statiske filer serveres av Cloudflare før koden kjører — det er hele
+# poenget med å la dem gjøre det — så middleware i src/app.ts når dem
+# aldri. Denne fila er der de settes i stedet.
+#
+# Det ble oppdaget ved at smoke-testen sa fra: nosniff forsvant i samme
+# øyeblikk frontenden ble servert som statiske filer i stedet for gjennom
+# applikasjonen.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin

@@ -16,6 +16,27 @@ migrations_dir = "migrations"
 binding = "FILES"
 bucket_name = "tavla-filer"
 
+# Frontenden, servert av den samme workeren.
+#
+# Alternativet var et eget Pages-prosjekt og ruting mellom to tjenester
+# under ett domene. Dette er én konfigblokk i stedet, og det løser
+# samtidig dyplenkene: uten SPA-fallback virker navigasjon inne i appen,
+# men en oppdatering av /anlegg/1 gir 404 — som aldri er siden man tester
+# for hånd.
+#
+# Same-origin er dessuten det som lar sesjonscookien bli stående på
+# SameSite=Lax. En frontend på ett domene og et API på et annet ville
+# krevd SameSite=None, som er nøyaktig den beskyttelsen vi ikke vil gi
+# fra oss.
+[assets]
+directory = "../frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+# Uten denne ville /api/... også endt som index.html. Workeren kjører
+# først for API-et og bare der; alt annet serveres som fil, eller faller
+# tilbake til appen.
+run_worker_first = ["/api/*"]
+
 [vars]
 TAVLA_ENV = "development"
 AUTH_MODE = "session"

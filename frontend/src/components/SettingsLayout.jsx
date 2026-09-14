@@ -3,7 +3,6 @@ import { t } from '../i18n/no'
 
 const TABS = [
   { key: 'modultyper', label: t.settings.tabModuleTypes, to: '/innstillinger/modultyper' },
-  { key: 'system', label: t.settings.tabSystem, to: '/innstillinger/system' },
 ]
 
 export default function SettingsLayout() {

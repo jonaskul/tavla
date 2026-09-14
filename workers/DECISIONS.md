@@ -338,3 +338,55 @@ Hver opplasting kom fram som en uleselig klump, og det viste seg som en
 Kontraktsuiten var upåvirket, siden httpx gjør dette riktig. Det er verdt
 å merke seg: den eneste grunnen til at dette ble oppdaget som en feil i
 testklienten og ikke i koden, var at kontrakten allerede var grønn.
+
+---
+
+# Utrulling: én worker, ikke to tjenester
+
+Frontenden serveres av den samme workeren, via `[assets]` i
+`wrangler.toml`. Alternativet var et eget Pages-prosjekt og ruting mellom
+to tjenester under ett domene.
+
+Tre grunner, hvorav den siste er den viktige:
+
+- Én konfigblokk i stedet for to utrullinger som må holdes i takt.
+- `not_found_handling = "single-page-application"` løser dyplenkene.
+  Uten den virker navigasjon inne i appen, men en oppdatering av
+  `/anlegg/1` gir 404 — som aldri er siden man tester for hånd.
+- **Same-origin er det som lar sesjonscookien bli stående på
+  `SameSite=Lax`.** En frontend på ett domene og et API på et annet ville
+  krevd `SameSite=None`, altså nøyaktig den CSRF-beskyttelsen vi ikke vil
+  gi fra oss.
+
+`run_worker_first = ["/api/*"]` er nødvendig: uten den ville `/api/...`
+også endt som `index.html`.
+
+## Det kostet en header, og smoke-testen sa fra
+
+Statiske filer serveres av Cloudflare før koden kjører — det er hele
+poenget — så middleware i `src/app.ts` når dem aldri. `nosniff` forsvant i
+samme øyeblikk frontenden ble servert som filer i stedet for gjennom
+applikasjonen.
+
+Den settes nå i `frontend/public/_headers`, sammen med `X-Frame-Options`
+og `Referrer-Policy` — de tre nginx satte.
+
+## Nettleseren fant noe ingen test gjorde
+
+En ekte innlogging i Chromium mot Workers-bygget viste tre 404-er i
+konsollen: frontenden pollet fortsatt `/api/system/pending`.
+
+De endepunktene skallet ut til `git` og `systemctl`, og planen slettet
+dem i økt 1 — utrulling er `wrangler deploy` nå, ikke en knapp i appen.
+Men frontenden visste det ikke, og ville logget 404-er for alltid med en
+innstillingsfane som ikke kunne virke.
+
+Fjernet: `SystemAdmin.jsx`, fanen, ruten, de tre API-kallene,
+oppdateringsprikken i navigasjonen og tekstene. Det er det eneste stedet
+frontenden er rørt i hele omskrivingen, og det er fordi endepunktene den
+snakket med ikke finnes lenger.
+
+Verdt å merke seg hvordan det ble funnet. 111 Workers-tester, 77
+kontraktstester og 71 frontend-tester sa alle ingenting: kontrakten
+beskriver endepunkter som finnes, og frontend-testene mocker API-et. Det
+måtte en nettleser til.
