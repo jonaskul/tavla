@@ -127,6 +127,41 @@ describe("requesting a code", () => {
     ).toBe(422);
     expect((await client.post("/api/auth/request-code", {})).status).toBe(422);
   });
+
+  test("refuses a domain that can never receive mail", async () => {
+    // RFC 2606 and 6761 reserve these. scripts/smoke_test.py probes the
+    // live endpoint with one precisely because validation refuses it
+    // before any mail is attempted, so the check costs nothing and does
+    // not spend the rate limit. Accepting them — as this did at first —
+    // turns that probe into a real send, and running the smoke test twice
+    // against production locks the deployer out of their own app.
+    for (const email of [
+      "ugyldig@ugyldig.invalid",
+      "a@b.test",
+      "a@b.localhost",
+      "a@b.local",
+      "a@-b.com",
+      "a@b-.com",
+    ]) {
+      expect(
+        (await client.post("/api/auth/request-code", { email })).status,
+        email,
+      ).toBe(422);
+    }
+    expect(sent, "nothing may be sent to an address that cannot exist").toHaveLength(0);
+  });
+
+  test("still accepts the addresses pydantic accepted", async () => {
+    // Checked against pydantic's EmailStr rather than guessed. .example is
+    // in the list because email-validator lets it through, however odd
+    // that reads next to .test.
+    for (const email of ["a@example.com", "a@b.example", "a@b.c", "æ@ø.no"]) {
+      expect(
+        (await client.post("/api/auth/request-code", { email })).status,
+        email,
+      ).toBe(200);
+    }
+  });
 });
 
 // --- Guessing and replay --------------------------------------------------

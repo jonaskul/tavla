@@ -45,8 +45,38 @@ export function invalid(problems: ValidationProblem[]): HTTPException {
  * Deliberately not RFC 5322: that grammar accepts things no mail provider
  * will, and the real check is whether the code arrives. This rejects the
  * shapes that are certainly mistakes and lets Resend judge the rest.
+ *
+ * Unicode on purpose — æ@ø.no is a valid address and pydantic accepted it.
  */
-const EMAIL = /^[^@\s,]+@[^@\s,.]+(\.[^@\s,.]+)+$/;
+const EMAIL = /^[^@\s,]+@[^@\s,.]+(\.[^@\s,.]+)+$/u;
+
+/**
+ * Domains reserved by RFC 2606 and 6761, which can never receive mail.
+ *
+ * Not pedantry. `scripts/smoke_test.py` probes the live sign-in endpoint
+ * with an address under one of these precisely because validation refuses
+ * it before any mail is attempted — so the check costs nothing and does
+ * not spend the ten-per-hour rate limit. Accepting them, as the first
+ * version of this did, turns that probe into a real send and running the
+ * smoke test twice locks the deployer out of their own app.
+ *
+ * The list matches what pydantic's EmailStr refuses, checked against it
+ * rather than guessed. Note that .example is absent: email-validator lets
+ * it through, and matching the implementation being replaced matters more
+ * than the RFC being tidy.
+ */
+const RESERVED_TLDS = new Set(["invalid", "test", "localhost", "local"]);
+
+function plausibleAddress(value: string): boolean {
+  if (!EMAIL.test(value)) return false;
+
+  const domain = value.slice(value.lastIndexOf("@") + 1).toLowerCase();
+  const labels = domain.split(".");
+
+  if (RESERVED_TLDS.has(labels[labels.length - 1])) return false;
+  // A label cannot start or end with a hyphen.
+  return !labels.some((label) => label.startsWith("-") || label.endsWith("-"));
+}
 
 export async function jsonBody(request: Request): Promise<Record<string, unknown>> {
   try {
@@ -79,7 +109,7 @@ export function requireString(
 
 export function requireEmail(body: Record<string, unknown>, field: string): string {
   const value = requireString(body, field);
-  if (!EMAIL.test(value.trim())) {
+  if (!plausibleAddress(value.trim())) {
     throw invalid([
       {
         type: "value_error",

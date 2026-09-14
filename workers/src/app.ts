@@ -53,6 +53,15 @@ export const PUBLIC_PATHS: ReadonlySet<string> = new Set([
 export function createApp(): App {
   const app = new Hono<Env>();
 
+  // The Python deployment got this from nginx. There is no nginx here, so
+  // it is set on everything the worker answers: without it a browser
+  // guesses the content type from the bytes, and an upload claiming to be
+  // a picture is treated as whatever it actually is.
+  app.use("*", async (c, next) => {
+    await next();
+    c.header("X-Content-Type-Options", "nosniff");
+  });
+
   app.use("*", async (c, next) => {
     if (PUBLIC_PATHS.has(new URL(c.req.url).pathname)) return next();
 
